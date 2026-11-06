@@ -7,15 +7,13 @@ use Illuminate\Support\Facades\Auth;
 class DashboardController extends Controller
 {
     /**
-     * Mengarahkan user ke dashboard sesuai role akun.
-     *
-     * Route yang digunakan semuanya SUDAH ADA
-     * di project SCP.
+     * Mengarahkan pengguna ke dashboard sesuai role akun.
      */
     public function index()
     {
         $user = Auth::user();
 
+        // Pastikan pengguna sudah login.
         if (!$user) {
             return redirect()->route('login');
         }
@@ -23,7 +21,6 @@ class DashboardController extends Controller
         $role = strtolower(trim($user->role ?? ''));
 
         switch ($role) {
-
             case 'waka':
                 return redirect()->route('waka.dashboard');
 
@@ -39,8 +36,11 @@ class DashboardController extends Controller
             case 'siswa':
                 return view('dashboard', compact('user'));
 
+            case 'kelas':
+                return redirect()->route('kelas.dashboard');
+
             default:
-                return view('dashboard', compact('user'));
+                abort(403, 'Role akun tidak dikenali.');
         }
     }
 }

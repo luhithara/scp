@@ -1,3 +1,4 @@
+
 @extends('layouts.app')
 
 @section('title', 'Perizinan Siswa - BK | SCP')
@@ -5,159 +6,92 @@
 @section('content')
 
 @php
-    /*
-    |--------------------------------------------------------------------------
-    | NORMALISASI DATA
-    |--------------------------------------------------------------------------
-    | Controller bisa mengirim $data, $izin, atau $perizinan.
-    | Semuanya dinormalisasi menjadi $data.
-    */
-
-    $data = $data
-        ?? $izin
-        ?? $perizinan
-        ?? collect();
-
+    $data = $data ?? $izin ?? $perizinan ?? collect();
     $tanggalFilter = request('tanggal', '');
 @endphp
 
-
 <div class="bk-izin-page">
 
-    {{-- =====================================================
-         HEADER
-    ====================================================== --}}
+    {{-- HEADER --}}
     <div class="bk-page-header">
-
         <div>
-
-            <div class="bk-eyebrow">
-                Bimbingan Konseling
-            </div>
-
-            <h1>
-                Perizinan Siswa
-            </h1>
-
+            <div class="bk-eyebrow">Bimbingan Konseling</div>
+            <h1>Perizinan Siswa</h1>
             <p>
-                Pantau data izin dan sakit siswa dari kelas yang
-                menjadi tanggung jawab BK.
+                Pantau dan lakukan persetujuan atau penolakan izin dan sakit
+                siswa dari kelas yang menjadi tanggung jawab BK.
             </p>
-
         </div>
 
-
         <div class="bk-header-info">
-
             <div class="bk-header-info-icon">
                 <i class="fa-solid fa-file-circle-check"></i>
             </div>
-
             <div>
-
-                <span>
-                    Total Data
-                </span>
-
-                <strong>
-                    {{ $data->count() }}
-                </strong>
-
+                <span>Total Data</span>
+                <strong>{{ $data->count() }}</strong>
             </div>
-
         </div>
-
     </div>
 
-
-    {{-- =====================================================
-         PESAN
-    ====================================================== --}}
-
+    {{-- PESAN --}}
     @if(session('success'))
-
         <div class="bk-alert success">
-
             <div class="bk-alert-icon">
                 <i class="fa-solid fa-check"></i>
             </div>
-
-            <span>
-                {{ session('success') }}
-            </span>
-
+            <span>{{ session('success') }}</span>
         </div>
-
     @endif
 
-
     @if(session('error'))
-
         <div class="bk-alert danger">
-
             <div class="bk-alert-icon">
                 <i class="fa-solid fa-xmark"></i>
             </div>
-
-            <span>
-                {{ session('error') }}
-            </span>
-
+            <span>{{ session('error') }}</span>
         </div>
-
     @endif
 
+    @if($errors->any())
+        <div class="bk-alert danger">
+            <div class="bk-alert-icon">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                @foreach($errors->all() as $error)
+                    <div>{{ $error }}</div>
+                @endforeach
+            </div>
+        </div>
+    @endif
 
-    {{-- =====================================================
-         FILTER
-    ====================================================== --}}
+    {{-- FILTER --}}
     <div class="bk-card filter-card">
-
         <div class="bk-card-header">
-
             <div class="bk-card-heading">
-
                 <div class="bk-card-icon">
                     <i class="fa-solid fa-filter"></i>
                 </div>
-
                 <div>
-
-                    <h3>
-                        Filter Perizinan
-                    </h3>
-
+                    <h3>Filter Perizinan</h3>
                     <p>
-                        Cari data izin atau sakit berdasarkan
-                        siswa, tanggal, jenis, dan status.
+                        Cari data izin atau sakit berdasarkan siswa,
+                        tanggal, jenis, dan status.
                     </p>
-
                 </div>
-
             </div>
-
         </div>
 
-
         <div class="bk-card-body">
+            <form method="GET"
+                  action="{{ route('bk.izin') }}"
+                  class="izin-filter-form">
 
-            <form
-                method="GET"
-                action="{{ route('bk.izin') }}"
-                class="izin-filter-form"
-            >
-
-                {{-- CARI --}}
                 <div class="form-field">
-
-                    <label for="cari">
-                        Cari Siswa
-                    </label>
-
+                    <label for="cari">Cari Siswa</label>
                     <div class="input-wrap">
-
                         <i class="fa-solid fa-magnifying-glass"></i>
-
                         <input
                             type="text"
                             id="cari"
@@ -165,291 +99,140 @@
                             value="{{ request('cari', '') }}"
                             placeholder="Nama atau NISN..."
                         >
-
                     </div>
-
                 </div>
 
-
-                {{-- TANGGAL --}}
                 <div class="form-field">
-
-                    <label for="tanggal">
-                        Tanggal
-                    </label>
-
+                    <label for="tanggal">Tanggal</label>
                     <div class="input-wrap">
-
                         <i class="fa-regular fa-calendar"></i>
-
                         <input
                             type="date"
                             id="tanggal"
                             name="tanggal"
                             value="{{ $tanggalFilter }}"
                         >
-
                     </div>
-
                 </div>
 
-
-                {{-- JENIS --}}
                 <div class="form-field">
-
-                    <label for="jenis">
-                        Jenis
-                    </label>
-
+                    <label for="jenis">Jenis</label>
                     <div class="input-wrap">
-
                         <i class="fa-solid fa-list"></i>
-
-                        <select
-                            id="jenis"
-                            name="jenis"
-                        >
-
-                            <option value="">
-                                Semua Jenis
-                            </option>
-
-                            <option
-                                value="izin"
-                                {{ request('jenis') === 'izin' ? 'selected' : '' }}
-                            >
+                        <select id="jenis" name="jenis">
+                            <option value="">Semua Jenis</option>
+                            <option value="izin" {{ request('jenis') === 'izin' ? 'selected' : '' }}>
                                 Izin
                             </option>
-
-                            <option
-                                value="sakit"
-                                {{ request('jenis') === 'sakit' ? 'selected' : '' }}
-                            >
+                            <option value="sakit" {{ request('jenis') === 'sakit' ? 'selected' : '' }}>
                                 Sakit
                             </option>
-
                         </select>
-
                     </div>
-
                 </div>
 
-
-                {{-- STATUS --}}
                 <div class="form-field">
-
-                    <label for="status">
-                        Status
-                    </label>
-
+                    <label for="status">Status</label>
                     <div class="input-wrap">
-
                         <i class="fa-solid fa-circle-check"></i>
-
-                        <select
-                            id="status"
-                            name="status"
-                        >
-
-                            <option value="">
-                                Semua Status
-                            </option>
-
-                            <option
-                                value="menunggu"
-                                {{ request('status') === 'menunggu' ? 'selected' : '' }}
-                            >
+                        <select id="status" name="status">
+                            <option value="">Semua Status</option>
+                            <option value="menunggu" {{ request('status') === 'menunggu' ? 'selected' : '' }}>
                                 Menunggu
                             </option>
-
-                            <option
-                                value="disetujui"
-                                {{ request('status') === 'disetujui' ? 'selected' : '' }}
-                            >
+                            <option value="disetujui" {{ request('status') === 'disetujui' ? 'selected' : '' }}>
                                 Disetujui
                             </option>
-
-                            <option
-                                value="ditolak"
-                                {{ request('status') === 'ditolak' ? 'selected' : '' }}
-                            >
+                            <option value="ditolak" {{ request('status') === 'ditolak' ? 'selected' : '' }}>
                                 Ditolak
                             </option>
-
                         </select>
-
                     </div>
-
                 </div>
 
-
-                {{-- ACTION --}}
                 <div class="filter-actions">
-
-                    <button
-                        type="submit"
-                        class="bk-primary-button"
-                    >
+                    <button type="submit" class="bk-primary-button">
                         <i class="fa-solid fa-magnifying-glass"></i>
                         Cari
                     </button>
 
-                    <a
-                        href="{{ route('bk.izin') }}"
-                        class="bk-secondary-button"
-                    >
+                    <a href="{{ route('bk.izin') }}" class="bk-secondary-button">
                         <i class="fa-solid fa-rotate-left"></i>
                         Reset
                     </a>
-
                 </div>
-
             </form>
-
         </div>
-
     </div>
 
-
-    {{-- =====================================================
-         RINGKASAN
-    ====================================================== --}}
+    {{-- RINGKASAN --}}
     <div class="summary-grid">
 
-        {{-- TOTAL --}}
         <div class="summary-card">
-
             <div class="summary-top">
-
                 <div>
-
-                    <span class="summary-label">
-                        Total Perizinan
-                    </span>
-
-                    <strong class="summary-number">
-                        {{ $data->count() }}
-                    </strong>
-
+                    <span class="summary-label">Total Perizinan</span>
+                    <strong class="summary-number">{{ $data->count() }}</strong>
                 </div>
-
                 <div class="summary-icon blue">
                     <i class="fa-solid fa-file-lines"></i>
                 </div>
-
             </div>
-
-            <p>
-                Data izin dan sakit siswa
-            </p>
-
+            <p>Data izin dan sakit siswa</p>
         </div>
 
-
-        {{-- IZIN --}}
         <div class="summary-card">
-
             <div class="summary-top">
-
                 <div>
-
-                    <span class="summary-label">
-                        Izin
-                    </span>
-
+                    <span class="summary-label">Izin</span>
                     <strong class="summary-number">
                         {{ $data->where('jenis', 'izin')->count() }}
                     </strong>
-
                 </div>
-
                 <div class="summary-icon green">
                     <i class="fa-solid fa-file-circle-check"></i>
                 </div>
-
             </div>
-
-            <p>
-                Siswa dengan status izin
-            </p>
-
+            <p>Siswa dengan jenis izin</p>
         </div>
 
-
-        {{-- SAKIT --}}
         <div class="summary-card">
-
             <div class="summary-top">
-
                 <div>
-
-                    <span class="summary-label">
-                        Sakit
-                    </span>
-
+                    <span class="summary-label">Sakit</span>
                     <strong class="summary-number">
                         {{ $data->where('jenis', 'sakit')->count() }}
                     </strong>
-
                 </div>
-
                 <div class="summary-icon orange">
                     <i class="fa-solid fa-notes-medical"></i>
                 </div>
-
             </div>
-
-            <p>
-                Siswa dengan status sakit
-            </p>
-
+            <p>Siswa dengan jenis sakit</p>
         </div>
 
     </div>
 
-
-    {{-- =====================================================
-         TABLE HEADER
-    ====================================================== --}}
+    {{-- JUDUL TABEL --}}
     <div class="result-heading">
-
         <div>
-
-            <h2>
-                Daftar Perizinan Siswa
-            </h2>
-
-            <p>
-                Data perizinan yang masuk dari siswa atau orangtua.
-            </p>
-
+            <h2>Daftar Perizinan Siswa</h2>
+            <p>Data perizinan yang masuk dari siswa atau orangtua.</p>
         </div>
-
 
         <div class="result-count">
-
             <i class="fa-solid fa-database"></i>
-
             {{ $data->count() }} data
-
         </div>
-
     </div>
 
-
-    {{-- =====================================================
-         TABLE
-    ====================================================== --}}
+    {{-- TABEL --}}
     <div class="bk-card table-card">
-
         <div class="table-container">
 
             <table class="izin-table">
-
                 <thead>
-
                     <tr>
-
                         <th>No</th>
                         <th>Siswa</th>
                         <th>Kelas</th>
@@ -459,16 +242,12 @@
                         <th>Alasan</th>
                         <th>Status</th>
                         <th>Bukti</th>
-
+                        <th>Aksi</th>
                     </tr>
-
                 </thead>
 
-
                 <tbody>
-
                     @forelse($data as $index => $item)
-
                         <tr>
 
                             {{-- NO --}}
@@ -476,339 +255,281 @@
                                 {{ $index + 1 }}
                             </td>
 
-
                             {{-- SISWA --}}
                             <td>
-
                                 <div class="student-cell">
-
                                     <div class="student-avatar">
-
                                         {{ strtoupper(substr($item->nama ?? '?', 0, 1)) }}
-
                                     </div>
-
                                     <div class="student-info">
-
-                                        <strong>
-                                            {{ $item->nama ?? '-' }}
-                                        </strong>
-
-                                        <span>
-                                            NISN: {{ $item->nisn ?? '-' }}
-                                        </span>
-
+                                        <strong>{{ $item->nama ?? '-' }}</strong>
+                                        <span>NISN: {{ $item->nisn ?? '-' }}</span>
                                     </div>
-
                                 </div>
-
                             </td>
-
 
                             {{-- KELAS --}}
                             <td>
-
                                 <span class="class-badge">
-
                                     <i class="fa-solid fa-door-open"></i>
-
                                     {{ $item->namakelas ?? '-' }}
-
                                 </span>
-
                             </td>
-
 
                             {{-- JURUSAN --}}
                             <td>
-
                                 <span class="jurusan-text">
                                     {{ $item->kodejurusan ?? '-' }}
                                 </span>
-
                             </td>
-
 
                             {{-- TANGGAL --}}
                             <td>
-
                                 @if(!empty($item->tanggal))
-
                                     <span class="date-text">
-
                                         <i class="fa-regular fa-calendar"></i>
-
                                         {{ \Carbon\Carbon::parse($item->tanggal)->format('d-m-Y') }}
-
                                     </span>
-
                                 @elseif(!empty($item->waktu))
-
                                     <span class="date-text">
-
                                         <i class="fa-regular fa-calendar"></i>
-
                                         {{ \Carbon\Carbon::parse($item->waktu)->format('d-m-Y') }}
-
                                     </span>
-
                                 @else
-
-                                    <span class="muted">
-                                        -
-                                    </span>
-
+                                    <span class="muted">-</span>
                                 @endif
-
                             </td>
-
 
                             {{-- JENIS --}}
                             <td>
-
                                 @if(($item->jenis ?? '') === 'sakit')
-
                                     <span class="type-badge sakit">
-
                                         <i class="fa-solid fa-notes-medical"></i>
-
                                         Sakit
-
                                     </span>
-
                                 @elseif(($item->jenis ?? '') === 'izin')
-
                                     <span class="type-badge izin">
-
                                         <i class="fa-solid fa-file-circle-check"></i>
-
                                         Izin
-
                                     </span>
-
                                 @else
-
                                     <span class="type-badge default">
-
                                         {{ $item->jenis ?? '-' }}
-
                                     </span>
-
                                 @endif
-
                             </td>
-
 
                             {{-- ALASAN --}}
                             <td>
-
                                 <div class="reason-text">
-
                                     {{ $item->alasan ?? '-' }}
-
                                 </div>
-
                             </td>
-
 
                             {{-- STATUS --}}
                             <td>
-
                                 @if(($item->status ?? '') === 'disetujui')
-
                                     <span class="status-badge approved">
-
                                         <i class="fa-solid fa-check"></i>
-
                                         Disetujui
-
                                     </span>
-
                                 @elseif(($item->status ?? '') === 'ditolak')
-
                                     <span class="status-badge rejected">
-
                                         <i class="fa-solid fa-xmark"></i>
-
                                         Ditolak
-
                                     </span>
-
                                 @elseif(($item->status ?? '') === 'menunggu')
-
                                     <span class="status-badge waiting">
-
                                         <i class="fa-solid fa-clock"></i>
-
                                         Menunggu
-
                                     </span>
-
                                 @else
-
                                     <span class="status-badge default">
-
                                         {{ $item->status ?? '-' }}
-
                                     </span>
-
                                 @endif
-
                             </td>
-
 
                             {{-- BUKTI --}}
                             <td>
-
                                 @php
                                     $buktiUtama = $item->bukti ?? null;
                                 @endphp
 
-
                                 @if($buktiUtama)
-
                                     <a
                                         href="{{ asset('storage/' . $buktiUtama) }}"
                                         target="_blank"
                                         class="evidence-button"
                                     >
-
                                         <i class="fa-regular fa-file-image"></i>
-
                                         Lihat Bukti
-
                                     </a>
-
-
                                 @elseif(
                                     isset($item->buktiFiles)
                                     && $item->buktiFiles
                                     && $item->buktiFiles->count() > 0
                                 )
-
                                     <div class="evidence-list">
-
                                         @foreach($item->buktiFiles as $bukti)
-
                                             <a
                                                 href="{{ asset('storage/' . $bukti->file) }}"
                                                 target="_blank"
                                                 class="evidence-button"
                                             >
-
                                                 <i class="fa-regular fa-file-image"></i>
-
                                                 Lihat Bukti
-
                                             </a>
-
                                         @endforeach
+                                    </div>
+                                @else
+                                    <span class="no-evidence">Tidak ada bukti</span>
+                                @endif
+                            </td>
+
+                            {{-- AKSI --}}
+                            <td>
+                                @if(($item->status ?? '') === 'menunggu')
+
+                                    <div class="action-buttons">
+
+                                        <form
+                                            method="POST"
+                                            action="{{ route('bk.izin.setujui', $item->id) }}"
+                                            onsubmit="return confirm('Yakin ingin menyetujui perizinan siswa ini?')"
+                                        >
+                                            @csrf
+                                            <button type="submit" class="action-button approve">
+                                                <i class="fa-solid fa-check"></i>
+                                                Setujui
+                                            </button>
+                                        </form>
+
+                                        <button
+                                            type="button"
+                                            class="action-button reject"
+                                            onclick="bukaModalTolak({{ $item->id }})"
+                                        >
+                                            <i class="fa-solid fa-xmark"></i>
+                                            Tolak
+                                        </button>
 
                                     </div>
 
-                                @else
-
-                                    <span class="no-evidence">
-                                        Tidak ada bukti
+                                @elseif(($item->status ?? '') === 'disetujui')
+                                    <span class="action-finished approved-finished">
+                                        <i class="fa-solid fa-lock"></i>
+                                        Sudah diproses
                                     </span>
 
-                                @endif
+                                @elseif(($item->status ?? '') === 'ditolak')
+                                    <span class="action-finished rejected-finished">
+                                        <i class="fa-solid fa-lock"></i>
+                                        Sudah diproses
+                                    </span>
 
+                                @else
+                                    <span class="muted">-</span>
+                                @endif
                             </td>
 
                         </tr>
 
-
                     @empty
-
                         <tr>
-
-                            <td
-                                colspan="9"
-                                class="empty-cell"
-                            >
-
+                            <td colspan="10" class="empty-cell">
                                 <div class="empty-state">
-
                                     <div class="empty-icon">
-
                                         <i class="fa-solid fa-file-circle-xmark"></i>
-
                                     </div>
-
-                                    <h3>
-                                        Belum Ada Data Perizinan
-                                    </h3>
-
+                                    <h3>Belum Ada Data Perizinan</h3>
                                     <p>
                                         Tidak ada data izin atau sakit
                                         yang sesuai dengan filter.
                                     </p>
-
                                 </div>
-
                             </td>
-
                         </tr>
-
                     @endforelse
-
                 </tbody>
-
             </table>
 
         </div>
-
     </div>
 
-
-    {{-- =====================================================
-         INFORMASI BK
-    ====================================================== --}}
+    {{-- INFORMASI --}}
     <div class="information-card">
-
         <div class="information-icon">
             <i class="fa-solid fa-circle-info"></i>
         </div>
-
         <div class="information-content">
-
-            <strong>
-                Informasi
-            </strong>
-
+            <strong>Informasi Persetujuan</strong>
             <p>
-                Halaman ini digunakan BK untuk memantau perizinan siswa.
-                BK tidak melakukan persetujuan atau penolakan izin dari
-                halaman ini.
+                BK dan Wali Kelas dapat menyetujui atau menolak perizinan.
+                Keputusan pertama yang diberikan akan mengunci data perizinan.
+                Setelah diproses oleh salah satu pihak, pihak lainnya tidak
+                dapat mengubah keputusan tersebut.
             </p>
-
         </div>
-
     </div>
 
 </div>
 
+{{-- MODAL TOLAK --}}
+<div id="modalTolak" class="modal-overlay">
+    <div class="modal-box">
+
+        <div class="modal-heading">
+            <div class="modal-icon reject-icon">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+            <div>
+                <h3>Tolak Perizinan</h3>
+                <p>Berikan catatan jika diperlukan.</p>
+            </div>
+        </div>
+
+        <form id="formTolak" method="POST">
+            @csrf
+
+            <div class="form-field modal-field">
+                <label for="catatanbk">Catatan Penolakan</label>
+                <textarea
+                    name="catatanbk"
+                    id="catatanbk"
+                    rows="4"
+                    maxlength="1000"
+                    placeholder="Tuliskan alasan penolakan (opsional)..."
+                ></textarea>
+            </div>
+
+            <div class="modal-actions">
+                <button
+                    type="button"
+                    class="bk-secondary-button"
+                    onclick="tutupModalTolak()"
+                >
+                    Batal
+                </button>
+
+                <button type="submit" class="action-button reject">
+                    <i class="fa-solid fa-xmark"></i>
+                    Ya, Tolak
+                </button>
+            </div>
+        </form>
+
+    </div>
+</div>
 
 @push('styles')
-
 <style>
-
-    /* =====================================================
-       PAGE
-    ====================================================== */
-
     .bk-izin-page {
         width: 100%;
         max-width: 1320px;
         margin: 0 auto;
         padding-bottom: 30px;
     }
-
-
-    /* =====================================================
-       HEADER
-    ====================================================== */
 
     .bk-page-header {
         display: flex;
@@ -883,11 +604,6 @@
         font-weight: 800;
     }
 
-
-    /* =====================================================
-       ALERT
-    ====================================================== */
-
     .bk-alert {
         display: flex;
         align-items: center;
@@ -928,11 +644,6 @@
     .bk-alert.danger .bk-alert-icon {
         background: #fbe0e3;
     }
-
-
-    /* =====================================================
-       CARD
-    ====================================================== */
 
     .bk-card {
         width: 100%;
@@ -991,19 +702,9 @@
         padding: 17px;
     }
 
-
-    /* =====================================================
-       FILTER
-    ====================================================== */
-
     .izin-filter-form {
         display: grid;
-        grid-template-columns:
-            minmax(220px, 1.5fr)
-            minmax(160px, 1fr)
-            minmax(150px, 1fr)
-            minmax(150px, 1fr)
-            auto;
+        grid-template-columns: minmax(220px, 1.5fr) minmax(160px, 1fr) minmax(150px, 1fr) minmax(150px, 1fr) auto;
         gap: 11px;
         align-items: end;
     }
@@ -1046,10 +747,6 @@
         transition: .2s ease;
     }
 
-    .input-wrap input::placeholder {
-        color: #a4adba;
-    }
-
     .input-wrap input:focus,
     .input-wrap select:focus {
         border-color: #1769d1;
@@ -1059,11 +756,6 @@
     .input-wrap select {
         cursor: pointer;
     }
-
-
-    /* =====================================================
-       BUTTON
-    ====================================================== */
 
     .filter-actions {
         display: flex;
@@ -1109,11 +801,6 @@
         background: #f1f4f8;
         color: #35445d;
     }
-
-
-    /* =====================================================
-       SUMMARY
-    ====================================================== */
 
     .summary-grid {
         display: grid;
@@ -1186,11 +873,6 @@
         font-size: 8px;
     }
 
-
-    /* =====================================================
-       RESULT
-    ====================================================== */
-
     .result-heading {
         display: flex;
         align-items: center;
@@ -1226,11 +908,6 @@
         white-space: nowrap;
     }
 
-
-    /* =====================================================
-       TABLE
-    ====================================================== */
-
     .table-card {
         overflow: hidden;
     }
@@ -1242,7 +919,7 @@
 
     .izin-table {
         width: 100%;
-        min-width: 1080px;
+        min-width: 1250px;
         border-collapse: collapse;
     }
 
@@ -1286,11 +963,6 @@
         font-weight: 700;
     }
 
-
-    /* =====================================================
-       STUDENT
-    ====================================================== */
-
     .student-cell {
         min-width: 175px;
         display: flex;
@@ -1325,11 +997,6 @@
         color: #98a2b1;
         font-size: 7px;
     }
-
-
-    /* =====================================================
-       TABLE CONTENT
-    ====================================================== */
 
     .class-badge {
         display: inline-flex;
@@ -1378,11 +1045,6 @@
         color: #a0a9b6;
     }
 
-
-    /* =====================================================
-       TYPE / STATUS
-    ====================================================== */
-
     .type-badge,
     .status-badge {
         display: inline-flex;
@@ -1405,7 +1067,8 @@
         color: #a96800;
     }
 
-    .type-badge.default {
+    .type-badge.default,
+    .status-badge.default {
         background: #f1f4f8;
         color: #68758a;
     }
@@ -1424,16 +1087,6 @@
         background: #fff5e8;
         color: #a96800;
     }
-
-    .status-badge.default {
-        background: #f1f4f8;
-        color: #68758a;
-    }
-
-
-    /* =====================================================
-       EVIDENCE
-    ====================================================== */
 
     .evidence-list {
         display: flex;
@@ -1471,10 +1124,75 @@
         white-space: nowrap;
     }
 
+    /* TOMBOL AKSI */
+    .action-buttons {
+        min-width: 105px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
 
-    /* =====================================================
-       EMPTY
-    ====================================================== */
+    .action-buttons form {
+        margin: 0;
+    }
+
+    .action-button {
+        width: 100%;
+        min-height: 29px;
+        padding: 6px 9px;
+        border-radius: 7px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        font-family: inherit;
+        font-size: 8px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: .2s ease;
+        white-space: nowrap;
+    }
+
+    .action-button.approve {
+        border: 1px solid #ccebd9;
+        background: #effaf3;
+        color: #188653;
+    }
+
+    .action-button.approve:hover {
+        background: #dff5e8;
+    }
+
+    .action-button.reject {
+        border: 1px solid #f2cfd2;
+        background: #fff3f4;
+        color: #c23948;
+    }
+
+    .action-button.reject:hover {
+        background: #ffe5e8;
+    }
+
+    .action-finished {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 7px 8px;
+        border-radius: 7px;
+        font-size: 7px;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .approved-finished {
+        background: #edf9f2;
+        color: #188653;
+    }
+
+    .rejected-finished {
+        background: #fff0f1;
+        color: #c23948;
+    }
 
     .empty-cell {
         padding: 0 !important;
@@ -1516,11 +1234,6 @@
         font-size: 10px;
     }
 
-
-    /* =====================================================
-       INFORMATION
-    ====================================================== */
-
     .information-card {
         margin-top: 16px;
         padding: 14px 16px;
@@ -1560,27 +1273,102 @@
         line-height: 1.6;
     }
 
+    /* MODAL TOLAK */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        padding: 20px;
+        background: rgba(15, 23, 42, .48);
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
 
-    /* =====================================================
-       RESPONSIVE
-    ====================================================== */
+    .modal-overlay.show {
+        display: flex;
+    }
+
+    .modal-box {
+        width: 100%;
+        max-width: 430px;
+        padding: 22px;
+        border: 1px solid #e1e7ef;
+        border-radius: 14px;
+        background: #fff;
+        box-shadow: 0 15px 45px rgba(15, 23, 42, .18);
+    }
+
+    .modal-heading {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        margin-bottom: 20px;
+    }
+
+    .modal-icon {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .reject-icon {
+        background: #fff0f1;
+        color: #c23948;
+    }
+
+    .modal-heading h3 {
+        margin: 0;
+        color: #26354d;
+        font-size: 14px;
+        font-weight: 800;
+    }
+
+    .modal-heading p {
+        margin: 4px 0 0;
+        color: #8a95a6;
+        font-size: 10px;
+    }
+
+    .modal-field textarea {
+        width: 100%;
+        padding: 11px;
+        border: 1px solid #dce2eb;
+        border-radius: 8px;
+        outline: none;
+        resize: vertical;
+        font-family: inherit;
+        font-size: 10px;
+        color: #334158;
+    }
+
+    .modal-field textarea:focus {
+        border-color: #1769d1;
+        box-shadow: 0 0 0 3px rgba(23, 105, 209, .08);
+    }
+
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 16px;
+    }
 
     @media (max-width: 1100px) {
-
         .izin-filter-form {
-            grid-template-columns:
-                repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
         .filter-actions {
             grid-column: 1 / -1;
         }
-
     }
 
-
     @media (max-width: 800px) {
-
         .bk-page-header {
             align-items: flex-start;
             flex-direction: column;
@@ -1606,12 +1394,9 @@
             align-items: flex-start;
             flex-direction: column;
         }
-
     }
 
-
     @media (max-width: 550px) {
-
         .izin-filter-form {
             grid-template-columns: 1fr;
         }
@@ -1629,10 +1414,36 @@
             align-items: flex-start;
         }
 
+        .modal-box {
+            padding: 17px;
+        }
+    }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+    function bukaModalTolak(id) {
+        const modal = document.getElementById('modalTolak');
+        const form = document.getElementById('formTolak');
+        const catatan = document.getElementById('catatanbk');
+
+        form.action = "{{ url('/bk/izin') }}/" + id + "/tolak";
+        catatan.value = '';
+
+        modal.classList.add('show');
     }
 
-</style>
+    function tutupModalTolak() {
+        document.getElementById('modalTolak').classList.remove('show');
+    }
 
+    document.getElementById('modalTolak').addEventListener('click', function(event) {
+        if (event.target === this) {
+            tutupModalTolak();
+        }
+    });
+</script>
 @endpush
 
 @endsection

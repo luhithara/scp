@@ -1,183 +1,151 @@
 @extends('layouts.app')
 
 @section('title', 'Jadwal Mengajar')
+@section('page-title', 'Jadwal Mengajar')
 
 @push('styles')
 <style>
-    .guru-jadwal-page {
-        width: 100%;
+    .jadwal-page {
         max-width: 1500px;
-        margin: 0 auto;
+        margin: auto;
         padding: 28px 30px 50px;
         color: #172033;
     }
 
-    .guru-jadwal-page *,
-    .guru-jadwal-page *::before,
-    .guru-jadwal-page *::after {
+    .jadwal-page * {
         box-sizing: border-box;
     }
 
-    .guru-page-header {
+    .jadwal-header {
         display: flex;
-        align-items: flex-start;
         justify-content: space-between;
+        align-items: center;
         gap: 20px;
-        margin-bottom: 24px;
+        margin-bottom: 25px;
     }
 
-    .guru-breadcrumb {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 8px;
+    .jadwal-breadcrumb {
         color: #7b8798;
         font-size: 13px;
+        margin-bottom: 8px;
     }
 
-    .guru-breadcrumb .active {
-        color: #1d4ed8;
-        font-weight: 600;
+    .jadwal-breadcrumb span {
+        color: #2563eb;
+        font-weight: 700;
     }
 
-    .guru-page-title {
+    .jadwal-title {
         margin: 0;
         color: #14213d;
         font-size: 28px;
         font-weight: 750;
     }
 
-    .guru-page-description {
+    .jadwal-description {
         margin: 8px 0 0;
         color: #6b778c;
         font-size: 14px;
     }
 
-    .guru-account-info {
+    .jadwal-account {
         display: flex;
         align-items: center;
-        gap: 13px;
-        min-width: 240px;
+        gap: 12px;
         padding: 13px 16px;
-        background: #fff;
+        background: white;
         border: 1px solid #e3ebf5;
-        border-radius: 14px;
-        box-shadow: 0 4px 16px rgba(30,64,175,.05);
+        border-radius: 13px;
     }
 
-    .guru-account-icon,
-    .guru-panel-icon {
+    .jadwal-account-icon {
         display: flex;
         align-items: center;
         justify-content: center;
-        flex: 0 0 40px;
         width: 40px;
         height: 40px;
         color: #2563eb;
         background: #edf4ff;
-        border-radius: 11px;
+        border-radius: 10px;
+        font-size: 19px;
     }
 
-    .guru-account-icon svg,
-    .guru-panel-icon svg {
-        width: 21px;
-        height: 21px;
-    }
-
-    .guru-account-label {
+    .jadwal-account-label {
         color: #8a96a8;
         font-size: 11px;
     }
 
-    .guru-account-name {
+    .jadwal-account-name {
         color: #1e293b;
         font-size: 14px;
         font-weight: 700;
     }
 
-    .guru-alert {
-        display: flex;
-        gap: 12px;
+    .jadwal-alert {
         padding: 14px 16px;
-        margin-bottom: 20px;
-        border: 1px solid transparent;
-        border-radius: 12px;
+        margin-bottom: 18px;
+        border-radius: 10px;
         font-size: 13px;
     }
 
-    .guru-alert-success {
+    .jadwal-success {
         color: #166534;
         background: #effaf4;
-        border-color: #cceedd;
+        border: 1px solid #cceedd;
     }
 
-    .guru-alert-error {
+    .jadwal-error {
         color: #b42318;
         background: #fff4f4;
-        border-color: #f4cccc;
+        border: 1px solid #f4cccc;
     }
 
-    .guru-main-grid {
-        display: grid;
-        grid-template-columns: minmax(330px,.82fr) minmax(500px,1.5fr);
-        gap: 22px;
-        align-items: start;
-    }
-
-    .guru-panel {
+    .jadwal-panel {
+        margin-bottom: 22px;
         overflow: hidden;
-        background: #fff;
+        background: white;
         border: 1px solid #e1e9f3;
-        border-radius: 16px;
-        box-shadow: 0 5px 20px rgba(30,64,175,.055);
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(30,64,175,.045);
     }
 
-    .guru-panel-header {
+    .jadwal-panel-header {
         display: flex;
-        align-items: center;
         justify-content: space-between;
+        align-items: center;
         gap: 15px;
-        padding: 20px 21px;
+        padding: 19px 21px;
         border-bottom: 1px solid #edf1f6;
     }
 
-    .guru-panel-header-left {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .guru-panel-title {
+    .jadwal-panel-title {
         margin: 0;
         color: #172033;
         font-size: 16px;
         font-weight: 750;
     }
 
-    .guru-panel-description {
-        margin: 4px 0 0;
+    .jadwal-panel-subtitle {
+        margin: 5px 0 0;
         color: #7a8799;
         font-size: 12px;
     }
 
-    .guru-panel-body {
-        padding: 21px;
+    .jadwal-panel-body {
+        padding: 22px;
     }
 
-    .guru-form-grid {
+    .jadwal-form-grid {
         display: grid;
-        grid-template-columns: repeat(2,minmax(0,1fr));
-        gap: 16px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 17px;
     }
 
-    .guru-form-group {
+    .jadwal-form-group {
         min-width: 0;
     }
 
-    .guru-form-group.full {
-        grid-column: 1 / -1;
-    }
-
-    .guru-form-label {
+    .jadwal-label {
         display: block;
         margin-bottom: 7px;
         color: #344054;
@@ -185,99 +153,86 @@
         font-weight: 700;
     }
 
-    .guru-required {
-        color: #dc2626;
-    }
-
-    .guru-form-control {
+    .jadwal-control {
         width: 100%;
         height: 43px;
         padding: 0 12px;
         color: #1f2937;
-        background: #fff;
+        background: white;
         border: 1px solid #d8e1ec;
         border-radius: 9px;
         outline: none;
         font-size: 13px;
     }
 
-    .guru-form-control:focus {
+    .jadwal-control:focus {
         border-color: #3b82f6;
         box-shadow: 0 0 0 3px rgba(59,130,246,.10);
     }
 
-    .guru-form-control:disabled {
-        background: #f7f9fc;
-        cursor: not-allowed;
-    }
-
-    .guru-form-help {
+    .jadwal-hint {
         margin-top: 6px;
-        color: #8a96a8;
+        color: #8995a7;
         font-size: 11px;
-        line-height: 1.5;
     }
 
-    .guru-form-actions {
+    .jadwal-form-actions {
+        display: flex;
+        gap: 9px;
+        margin-top: 21px;
         padding-top: 18px;
-        margin-top: 20px;
         border-top: 1px solid #edf1f6;
     }
 
-    .guru-btn-primary {
-        display: flex;
-        align-items: center;
+    .jadwal-btn {
+        display: inline-flex;
         justify-content: center;
+        align-items: center;
         gap: 7px;
-        width: 100%;
-        min-height: 44px;
-        color: #fff;
+        min-height: 40px;
+        padding: 0 17px;
+        color: white;
         background: #2563eb;
-        border: 0;
+        border: 1px solid #2563eb;
         border-radius: 9px;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 700;
+        text-decoration: none;
         cursor: pointer;
+        transition: .2s;
     }
 
-    .guru-btn-primary:hover {
+    .jadwal-btn:hover {
+        color: white;
         background: #1d4ed8;
     }
 
-    .guru-btn-primary:disabled {
-        opacity: .55;
-        cursor: not-allowed;
+    .jadwal-btn-light {
+        color: #475569;
+        background: white;
+        border-color: #dce3ed;
     }
 
-    .guru-info-note {
-        display: flex;
-        gap: 9px;
-        padding: 12px;
-        margin-top: 16px;
-        color: #5f7188;
-        background: #f7faff;
-        border: 1px solid #dfebfb;
-        border-radius: 9px;
-        font-size: 11px;
-        line-height: 1.6;
+    .jadwal-btn-light:hover {
+        color: #1d4ed8;
+        background: #f5f8ff;
     }
 
-    .guru-info-note strong {
-        color: #344054;
+    .jadwal-btn-danger {
+        min-height: 34px;
+        padding: 0 12px;
+        color: #b42318;
+        background: #fff4f4;
+        border-color: #f4cccc;
     }
 
-    .guru-time-preview {
-        padding: 13px;
-        margin-top: 16px;
-        color: #2457ad;
-        background: #f1f6ff;
-        border: 1px solid #dfebff;
-        border-radius: 10px;
-        font-size: 12px;
-        line-height: 1.8;
+    .jadwal-btn-danger:hover {
+        color: white;
+        background: #dc2626;
+        border-color: #dc2626;
     }
 
-    .guru-schedule-count {
+    .jadwal-count {
         padding: 6px 10px;
         color: #2558b5;
         background: #f1f6ff;
@@ -288,173 +243,127 @@
         white-space: nowrap;
     }
 
-    .guru-schedule-body {
-        padding: 16px;
-    }
-
-    .guru-day-group {
-        margin-bottom: 18px;
-    }
-
-    .guru-day-title {
-        display: flex;
-        align-items: center;
-        gap: 9px;
-        margin: 0 0 9px;
-        color: #344054;
-        font-size: 13px;
-        font-weight: 750;
-    }
-
-    .guru-day-line {
-        flex: 1;
-        height: 1px;
-        background: #e8edf4;
-    }
-
-    .guru-schedule-card {
+    .jadwal-list {
         display: grid;
-        grid-template-columns: 105px minmax(0,1fr) auto;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 14px;
-        align-items: center;
-        padding: 14px;
-        margin-bottom: 9px;
-        background: #fff;
+        padding: 18px;
+    }
+
+    .jadwal-card {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 17px;
+        background: white;
         border: 1px solid #e2e9f2;
         border-radius: 12px;
     }
 
-    .guru-schedule-time {
-        padding: 10px 8px;
-        text-align: center;
-        color: #2457ad;
-        background: #f1f6ff;
-        border: 1px solid #dfebff;
-        border-radius: 9px;
-        font-size: 12px;
-        font-weight: 800;
-    }
-
-    .guru-schedule-main {
-        min-width: 0;
-    }
-
-    .guru-schedule-subject {
-        margin: 0 0 5px;
-        overflow: hidden;
-        color: #172033;
-        font-size: 14px;
-        font-weight: 750;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .guru-schedule-class {
-        color: #66758a;
-        font-size: 11px;
-    }
-
-    .guru-schedule-meta {
+    .jadwal-card-top {
         display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 6px;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
     }
 
-    .guru-badge {
-        display: inline-flex;
-        justify-content: center;
-        min-width: 76px;
-        padding: 5px 8px;
-        border-radius: 7px;
-        font-size: 10px;
-        font-weight: 700;
-        white-space: nowrap;
-    }
-
-    .guru-badge-blue {
+    .jadwal-day {
+        padding: 6px 10px;
         color: #1d4ed8;
         background: #edf4ff;
         border: 1px solid #dbe9ff;
+        border-radius: 7px;
+        font-size: 11px;
+        font-weight: 700;
     }
 
-    .guru-badge-room {
+    .jadwal-time {
         color: #526173;
-        background: #f5f7fa;
-        border: 1px solid #e4e9ef;
-    }
-
-    .guru-badge-room-empty {
-        color: #9a6700;
-        background: #fff8e7;
-        border: 1px solid #f5e4b5;
-    }
-
-    .guru-btn-delete {
-        width: 55px;
-        height: 30px;
-        color: #c53030;
-        background: #fff7f7;
-        border: 1px solid #f0d2d2;
-        border-radius: 8px;
-        cursor: pointer;
-    }
-
-    .guru-empty-state {
-        padding: 45px 20px;
-        text-align: center;
-        color: #8995a7;
         font-size: 12px;
+        font-weight: 700;
     }
 
-    .guru-empty-state strong {
+    .jadwal-subject {
+        margin: 0 0 7px;
+        color: #172033;
+        font-size: 16px;
+        font-weight: 750;
+    }
+
+    .jadwal-detail {
+        color: #66758a;
+        font-size: 12px;
+        line-height: 1.8;
+    }
+
+    .jadwal-card-bottom {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding-top: 13px;
+        border-top: 1px solid #edf1f6;
+    }
+
+    .jadwal-empty {
+        grid-column: 1 / -1;
+        padding: 50px 20px;
+        color: #8995a7;
+        text-align: center;
+        font-size: 13px;
+    }
+
+    .jadwal-empty strong {
         display: block;
-        margin-bottom: 5px;
+        margin-bottom: 6px;
         color: #344054;
-        font-size: 14px;
+        font-size: 15px;
     }
 
-    @media(max-width:1100px) {
-        .guru-main-grid {
+    .jadwal-locked {
+        padding: 13px 16px;
+        margin-bottom: 18px;
+        color: #92400e;
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        border-radius: 10px;
+        font-size: 13px;
+    }
+
+    @media(max-width: 850px) {
+        .jadwal-list {
             grid-template-columns: 1fr;
         }
     }
 
-    @media(max-width:760px) {
-        .guru-jadwal-page {
+    @media(max-width: 650px) {
+        .jadwal-page {
             padding: 20px 15px 40px;
         }
 
-        .guru-page-header {
+        .jadwal-header {
+            align-items: stretch;
             flex-direction: column;
         }
 
-        .guru-account-info {
+        .jadwal-form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .jadwal-panel-body {
+            padding: 16px;
+        }
+
+        .jadwal-form-actions {
+            flex-direction: column;
+        }
+
+        .jadwal-form-actions .jadwal-btn {
             width: 100%;
         }
 
-        .guru-form-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .guru-form-group.full {
-            grid-column: auto;
-        }
-    }
-
-    @media(max-width:560px) {
-        .guru-schedule-card {
-            grid-template-columns: 1fr;
-        }
-
-        .guru-schedule-meta {
-            flex-direction: row;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .guru-schedule-time {
-            text-align: left;
+        .jadwal-list {
+            padding: 13px;
         }
     }
 </style>
@@ -463,343 +372,184 @@
 @section('content')
 
 @php
-    $jurusan = $jurusan ?? collect();
-    $kelas = $kelas ?? collect();
     $jadwal = $jadwal ?? collect();
+    $kelas = $kelas ?? collect();
     $jadwalTerkunci = $jadwalTerkunci ?? false;
 @endphp
 
-<div class="guru-jadwal-page">
+<div class="jadwal-page">
 
-    <div class="guru-page-header">
+    <div class="jadwal-header">
         <div>
-            <div class="guru-breadcrumb">
-                <span>Guru</span>
-                <span>/</span>
-                <span class="active">Jadwal Mengajar</span>
+            <div class="jadwal-breadcrumb">
+                Guru / <span>Jadwal Mengajar</span>
             </div>
 
-            <h1 class="guru-page-title">Jadwal Mengajar</h1>
+            <h1 class="jadwal-title">Jadwal Mengajar</h1>
 
-            <p class="guru-page-description">
-                Atur jadwal mengajar dan lihat seluruh jadwal yang dimiliki.
+            <p class="jadwal-description">
+                Kelola jadwal mengajar dan tambahkan jadwal pelajaran.
             </p>
         </div>
 
-        <div class="guru-account-info">
-            <div class="guru-account-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M20 21a8 8 0 0 0-16 0"/>
-                    <circle cx="12" cy="7" r="4"/>
-                </svg>
-            </div>
-
+        <div class="jadwal-account">
+            <div class="jadwal-account-icon">♙</div>
             <div>
-                <div class="guru-account-label">Guru yang sedang login</div>
-                <div class="guru-account-name">
+                <div class="jadwal-account-label">Guru yang sedang login</div>
+                <div class="jadwal-account-name">
                     {{ $guru->nama ?? auth()->user()->name ?? 'Guru' }}
                 </div>
             </div>
         </div>
     </div>
 
-    @if($jadwalTerkunci)
-        <div class="guru-alert guru-alert-error">
-            <div>
-                <strong>Jadwal sedang dikunci oleh Waka.</strong><br>
-                Kamu masih dapat melihat jadwal, tetapi tidak dapat menambah atau menghapus jadwal.
-            </div>
-        </div>
-    @endif
-
     @if(session('success'))
-        <div class="guru-alert guru-alert-success">
+        <div class="jadwal-alert jadwal-success">
             {{ session('success') }}
         </div>
     @endif
 
     @if(session('error'))
-        <div class="guru-alert guru-alert-error">
+        <div class="jadwal-alert jadwal-error">
             {{ session('error') }}
         </div>
     @endif
 
     @if($errors->any())
-        <div class="guru-alert guru-alert-error">
-            <div>
-                <strong>Data belum dapat disimpan:</strong>
-                @foreach($errors->all() as $error)
-                    <div>{{ $error }}</div>
-                @endforeach
-            </div>
+        <div class="jadwal-alert jadwal-error">
+            <strong>Terjadi kesalahan:</strong>
+            @foreach($errors->all() as $error)
+                <div>{{ $error }}</div>
+            @endforeach
         </div>
     @endif
 
-    <div class="guru-main-grid">
+    @if($jadwalTerkunci)
+        <div class="jadwal-locked">
+            <strong>Jadwal sedang dikunci.</strong>
+            Saat ini kamu belum bisa menambahkan atau menghapus jadwal.
+        </div>
+    @else
 
-        {{-- FORM INPUT JADWAL --}}
+        {{-- FORM TAMBAH JADWAL --}}
+        <section class="jadwal-panel">
 
-        <section class="guru-panel">
-
-            <div class="guru-panel-header">
-                <div class="guru-panel-header-left">
-                    <div class="guru-panel-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <rect x="4" y="4" width="16" height="16" rx="2"/>
-                            <path d="M12 8v8M8 12h8"/>
-                        </svg>
-                    </div>
-
-                    <div>
-                        <h2 class="guru-panel-title">Input Jadwal</h2>
-                        <p class="guru-panel-description">Tambahkan jadwal mengajar baru.</p>
-                    </div>
+            <div class="jadwal-panel-header">
+                <div>
+                    <h2 class="jadwal-panel-title">Tambah Jadwal Mengajar</h2>
+                    <p class="jadwal-panel-subtitle">
+                        Isi informasi jadwal pelajaran yang akan kamu ajar.
+                    </p>
                 </div>
             </div>
 
-            <div class="guru-panel-body">
+            <div class="jadwal-panel-body">
 
                 <form action="{{ route('guru.jadwal.simpan') }}" method="POST">
                     @csrf
 
-                    <div class="guru-form-grid">
+                    <div class="jadwal-form-grid">
 
-                        <div class="guru-form-group full">
-                            <label class="guru-form-label" for="namamapel">
-                                Mata Pelajaran <span class="guru-required">*</span>
-                            </label>
-
+                        <div class="jadwal-form-group">
+                            <label class="jadwal-label">Mata Pelajaran</label>
                             <input
                                 type="text"
-                                id="namamapel"
                                 name="namamapel"
-                                class="guru-form-control"
+                                class="jadwal-control"
                                 value="{{ old('namamapel') }}"
                                 placeholder="Contoh: Matematika"
-                                maxlength="100"
-                                autocomplete="off"
                                 required
-                                {{ $jadwalTerkunci ? 'disabled' : '' }}
                             >
-
-                            <div class="guru-form-help">
-                                Ketik nama mata pelajaran. Jika belum terdaftar, sistem akan menambahkannya secara otomatis.
-                            </div>
                         </div>
 
-                        <div class="guru-form-group">
-                            <label class="guru-form-label" for="tingkat">
-                                Tingkat <span class="guru-required">*</span>
-                            </label>
-
-                            <select
-                                id="tingkat"
-                                class="guru-form-control"
-                                required
-                                {{ $jadwalTerkunci ? 'disabled' : '' }}
-                            >
-                                <option value="">Pilih Tingkat</option>
-
-                                @foreach([10,11,12] as $tingkatItem)
-                                    <option
-                                        value="{{ $tingkatItem }}"
-                                        {{ old('tingkat') == $tingkatItem ? 'selected' : '' }}
-                                    >
-                                        Kelas {{ $tingkatItem }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="guru-form-group">
-                            <label class="guru-form-label" for="jurusanid">
-                                Jurusan <span class="guru-required">*</span>
-                            </label>
-
-                            <select
-                                id="jurusanid"
-                                class="guru-form-control"
-                                required
-                                {{ $jadwalTerkunci ? 'disabled' : '' }}
-                            >
-                                <option value="">Pilih Jurusan</option>
-
-                                @foreach($jurusan as $jurusanItem)
-                                    <option
-                                        value="{{ $jurusanItem->id }}"
-                                        {{ old('jurusanid') == $jurusanItem->id ? 'selected' : '' }}
-                                    >
-                                        {{ $jurusanItem->namajurusan }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="guru-form-group full">
-                            <label class="guru-form-label" for="kelasid">
-                                Kelas <span class="guru-required">*</span>
-                            </label>
-
-                            <select
-                                id="kelasid"
-                                name="kelasid"
-                                class="guru-form-control"
-                                required
-                                {{ $jadwalTerkunci ? 'disabled' : '' }}
-                            >
+                        <div class="jadwal-form-group">
+                            <label class="jadwal-label">Kelas</label>
+                            <select name="kelasid" class="jadwal-control" required>
                                 <option value="">Pilih Kelas</option>
-
-                                @foreach($kelas as $kelasItem)
-                                    @php
-                                        $namaJurusanKelas = data_get($kelasItem, 'jurusan.namajurusan')
-                                            ?? data_get($kelasItem, 'namajurusan');
-                                    @endphp
-
+                                @foreach($kelas as $item)
                                     <option
-                                        value="{{ $kelasItem->id }}"
-                                        data-tingkat="{{ $kelasItem->tingkat ?? '' }}"
-                                        data-jurusan="{{ $kelasItem->jurusanid ?? '' }}"
-                                        {{ old('kelasid') == $kelasItem->id ? 'selected' : '' }}
+                                        value="{{ $item->id }}"
+                                        {{ old('kelasid') == $item->id ? 'selected' : '' }}
                                     >
-                                        {{ $kelasItem->namakelas }}
-                                        @if($namaJurusanKelas)
-                                            — {{ $namaJurusanKelas }}
-                                        @endif
+                                        {{ $item->namakelas }}
                                     </option>
                                 @endforeach
                             </select>
-
-                            <div class="guru-form-help">
-                                Pilih tingkat dan jurusan terlebih dahulu.
-                            </div>
                         </div>
 
-                        <div class="guru-form-group">
-                            <label class="guru-form-label" for="blok">
-                                Putaran Blok <span class="guru-required">*</span>
-                            </label>
-
-                            <select
-                                id="blok"
-                                name="blok"
-                                class="guru-form-control"
-                                required
-                                {{ $jadwalTerkunci ? 'disabled' : '' }}
-                            >
-                                <option value="">Pilih Putaran</option>
-
-                                <option value="1" {{ old('blok') == '1' ? 'selected' : '' }}>
-                                    Putaran 1
-                                </option>
-
-                                <option value="2" {{ old('blok') == '2' ? 'selected' : '' }}>
-                                    Putaran 2
-                                </option>
-                            </select>
-
-                            <div class="guru-form-help">
-                                Kelas dengan nomor ganjil menggunakan Putaran 1, nomor genap Putaran 2.
-                            </div>
-                        </div>
-
-                        <div class="guru-form-group">
-                            <label class="guru-form-label" for="hari">
-                                Hari <span class="guru-required">*</span>
-                            </label>
-
-                            <select
-                                id="hari"
-                                name="hari"
-                                class="guru-form-control"
-                                required
-                                {{ $jadwalTerkunci ? 'disabled' : '' }}
-                            >
+                        <div class="jadwal-form-group">
+                            <label class="jadwal-label">Hari</label>
+                            <select name="hari" class="jadwal-control" required>
                                 <option value="">Pilih Hari</option>
-
-                                @foreach(['senin','selasa','rabu','kamis','jumat'] as $namaHari)
+                                @foreach(['senin', 'selasa', 'rabu', 'kamis', 'jumat'] as $hari)
                                     <option
-                                        value="{{ $namaHari }}"
-                                        {{ old('hari') == $namaHari ? 'selected' : '' }}
+                                        value="{{ $hari }}"
+                                        {{ old('hari') == $hari ? 'selected' : '' }}
                                     >
-                                        {{ ucfirst($namaHari) }}
+                                        {{ ucfirst($hari) }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
 
-                        <div class="guru-form-group">
-                            <label class="guru-form-label" for="jamMulaiKe">
-                                Jam Pelajaran Mulai <span class="guru-required">*</span>
-                            </label>
+                        <div class="jadwal-form-group">
+                            <label class="jadwal-label">Blok Jadwal</label>
+                            <select name="blok" class="jadwal-control" required>
+                                <option value="">Pilih Blok</option>
+                                <option value="1" {{ old('blok') == '1' ? 'selected' : '' }}>
+                                    Blok 1
+                                </option>
+                                <option value="2" {{ old('blok') == '2' ? 'selected' : '' }}>
+                                    Blok 2
+                                </option>
+                            </select>
+                            <div class="jadwal-hint">
+                                Pilih blok sesuai pembagian jadwal kelas.
+                            </div>
+                        </div>
 
-                            <select
-                                id="jamMulaiKe"
-                                name="jamMulaiKe"
-                                class="guru-form-control"
-                                required
-                                {{ $jadwalTerkunci ? 'disabled' : '' }}
-                            >
+                        <div class="jadwal-form-group">
+                            <label class="jadwal-label">Jam Pelajaran Mulai</label>
+                            <select name="jamMulaiKe" class="jadwal-control" required>
                                 <option value="">Pilih Jam Mulai</option>
-
                                 @for($i = 1; $i <= 7; $i++)
                                     <option
                                         value="{{ $i }}"
                                         {{ old('jamMulaiKe') == $i ? 'selected' : '' }}
                                     >
-                                        Jam Pelajaran ke-{{ $i }}
+                                        Jam ke-{{ $i }}
                                     </option>
                                 @endfor
                             </select>
                         </div>
 
-                        <div class="guru-form-group">
-                            <label class="guru-form-label" for="jamSelesaiKe">
-                                Jam Pelajaran Selesai <span class="guru-required">*</span>
-                            </label>
-
-                            <select
-                                id="jamSelesaiKe"
-                                name="jamSelesaiKe"
-                                class="guru-form-control"
-                                required
-                                {{ $jadwalTerkunci ? 'disabled' : '' }}
-                            >
+                        <div class="jadwal-form-group">
+                            <label class="jadwal-label">Jam Pelajaran Selesai</label>
+                            <select name="jamSelesaiKe" class="jadwal-control" required>
                                 <option value="">Pilih Jam Selesai</option>
-
                                 @for($i = 1; $i <= 7; $i++)
                                     <option
                                         value="{{ $i }}"
                                         {{ old('jamSelesaiKe') == $i ? 'selected' : '' }}
                                     >
-                                        Jam Pelajaran ke-{{ $i }}
+                                        Jam ke-{{ $i }}
                                     </option>
                                 @endfor
                             </select>
+                            <div class="jadwal-hint">
+                                Jam selesai tidak boleh lebih awal dari jam mulai.
+                            </div>
                         </div>
 
                     </div>
 
-                    <div class="guru-time-preview" id="previewWaktu">
-                        Pilih hari dan jam pelajaran untuk melihat waktu mulai dan selesai.
-                    </div>
-
-                    <div class="guru-info-note">
-                        <div>
-                            <strong>Pengaturan waktu otomatis</strong><br>
-                            Senin–Jumat: 45 menit per jam pelajaran, total 7 JP.
-                            Jam dimulai pukul 07.15. Istirahat pertama 15 menit setelah
-                            JP 2 dan istirahat kedua 60 menit setelah JP 5.
-                            Ruangan akan ditentukan oleh Waka.
-                        </div>
-                    </div>
-
-                    <div class="guru-form-actions">
-                        <button
-                            type="submit"
-                            class="guru-btn-primary"
-                            {{ $jadwalTerkunci ? 'disabled' : '' }}
-                        >
+                    <div class="jadwal-form-actions">
+                        <button type="submit" class="jadwal-btn">
                             + Simpan Jadwal
+                        </button>
+
+                        <button type="reset" class="jadwal-btn jadwal-btn-light">
+                            Reset Form
                         </button>
                     </div>
 
@@ -808,315 +558,101 @@
             </div>
         </section>
 
-        {{-- DAFTAR JADWAL --}}
+    @endif
 
-        <section class="guru-panel">
+    {{-- DAFTAR JADWAL --}}
+    <section class="jadwal-panel">
 
-            <div class="guru-panel-header">
-                <div class="guru-panel-header-left">
-                    <div class="guru-panel-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <rect x="3.5" y="5" width="17" height="15" rx="2"/>
-                            <path d="M7 3.5v3M17 3.5v3M3.5 9h17"/>
-                        </svg>
+        <div class="jadwal-panel-header">
+            <div>
+                <h2 class="jadwal-panel-title">Daftar Jadwal Mengajar</h2>
+                <p class="jadwal-panel-subtitle">
+                    Seluruh jadwal pelajaran yang menjadi tanggung jawabmu.
+                </p>
+            </div>
+
+            <div class="jadwal-count">
+                {{ $jadwal->count() }} Jadwal
+            </div>
+        </div>
+
+        <div class="jadwal-list">
+
+            @forelse($jadwal as $item)
+
+                <article class="jadwal-card">
+
+                    <div class="jadwal-card-top">
+                        <span class="jadwal-day">
+                            {{ ucfirst($item->hari ?? '-') }}
+                        </span>
+
+                        <span class="jadwal-time">
+                            {{ substr($item->jamMulai ?? '', 0, 5) }}
+                            –
+                            {{ substr($item->jamSelesai ?? '', 0, 5) }}
+                        </span>
                     </div>
 
                     <div>
-                        <h2 class="guru-panel-title">Jadwal Mengajar Saya</h2>
-                        <p class="guru-panel-description">
-                            Jadwal yang sudah dimasukkan oleh guru.
-                        </p>
+                        <h3 class="jadwal-subject">
+                            {{ $item->mapel->namamapel ?? 'Mata Pelajaran' }}
+                        </h3>
+
+                        <div class="jadwal-detail">
+                            <strong>Kelas:</strong>
+                            {{ $item->kelas->namakelas ?? '-' }}
+
+                            @if(isset($item->kelas->jurusan))
+                                <br>
+                                <strong>Jurusan:</strong>
+                                {{ $item->kelas->jurusan->namajurusan ?? '-' }}
+                            @endif
+
+                            @if(isset($item->ruangan))
+                                <br>
+                                <strong>Ruangan:</strong>
+                                {{ $item->ruangan->namaruangan ?? '-' }}
+                            @endif
+                        </div>
                     </div>
+
+                    <div class="jadwal-card-bottom">
+                        <span class="jadwal-detail">
+                            Jadwal Mengajar
+                        </span>
+
+                        @unless($jadwalTerkunci)
+                            <form
+                                action="{{ route('guru.jadwal.hapus', $item->id) }}"
+                                method="POST"
+                                onsubmit="return confirm('Yakin ingin menghapus jadwal ini?')"
+                            >
+                                @csrf
+                                @method('DELETE')
+
+                                <button type="submit" class="jadwal-btn jadwal-btn-danger">
+                                    Hapus
+                                </button>
+                            </form>
+                        @endunless
+                    </div>
+
+                </article>
+
+            @empty
+
+                <div class="jadwal-empty">
+                    <strong>Belum Ada Jadwal Mengajar</strong>
+                    Silakan tambahkan jadwal melalui formulir di atas.
                 </div>
 
-                @if($jadwal->count())
-                    <div class="guru-schedule-count">
-                        {{ $jadwal->count() }} Jadwal
-                    </div>
-                @endif
-            </div>
+            @endforelse
 
-            <div class="guru-schedule-body">
+        </div>
 
-                @php
-                    $urutanHari = [
-                        'senin' => 'Senin',
-                        'selasa' => 'Selasa',
-                        'rabu' => 'Rabu',
-                        'kamis' => 'Kamis',
-                        'jumat' => 'Jumat',
-                    ];
+    </section>
 
-                    $jadwalTerurut = $jadwal->groupBy(function ($item) {
-                        return strtolower($item->hari);
-                    });
-                @endphp
-
-                @if($jadwal->count())
-
-                    @foreach($urutanHari as $hariKey => $hariLabel)
-
-                        @if(isset($jadwalTerurut[$hariKey]))
-
-                            <div class="guru-day-group">
-
-                                <div class="guru-day-title">
-                                    {{ $hariLabel }}
-                                    <div class="guru-day-line"></div>
-                                </div>
-
-                                @foreach($jadwalTerurut[$hariKey]->sortBy('jamMulai') as $item)
-
-                                    @php
-                                        $namaKelas = data_get($item, 'kelas.namakelas')
-                                            ?? 'Kelas belum tersedia';
-
-                                        $namaMapel = data_get($item, 'mapel.namamapel')
-                                            ?? 'Mata Pelajaran';
-
-                                        $namaJurusan = data_get($item, 'kelas.jurusan.namajurusan')
-                                            ?? data_get($item, 'kelas.namajurusan');
-
-                                        $namaRuangan = data_get($item, 'ruangan.namaruangan');
-                                    @endphp
-
-                                    <div class="guru-schedule-card">
-
-                                        <div class="guru-schedule-time">
-                                            {{ substr($item->jamMulai, 0, 5) }}
-                                            –
-                                            {{ substr($item->jamSelesai, 0, 5) }}
-                                        </div>
-
-                                        <div class="guru-schedule-main">
-
-                                            <h3 class="guru-schedule-subject">
-                                                {{ $namaMapel }}
-                                            </h3>
-
-                                            <div class="guru-schedule-class">
-                                                <strong>{{ $namaKelas }}</strong>
-
-                                                @if($namaJurusan)
-                                                    • {{ $namaJurusan }}
-                                                @endif
-                                            </div>
-
-                                        </div>
-
-                                        <div class="guru-schedule-meta">
-
-                                            <span class="guru-badge guru-badge-blue">
-                                                Putaran {{ $item->blok }}
-                                            </span>
-
-                                            @if($namaRuangan)
-                                                <span class="guru-badge guru-badge-room">
-                                                    {{ $namaRuangan }}
-                                                </span>
-                                            @else
-                                                <span class="guru-badge guru-badge-room-empty">
-                                                    Ruangan belum diatur
-                                                </span>
-                                            @endif
-
-                                            @if(!$jadwalTerkunci)
-                                                <form
-                                                    action="{{ route('guru.jadwal.hapus', $item->id) }}"
-                                                    method="POST"
-                                                    onsubmit="return confirm('Apakah kamu yakin ingin menghapus jadwal ini?')"
-                                                >
-                                                    @csrf
-                                                    @method('DELETE')
-
-                                                    <button
-                                                        type="submit"
-                                                        class="guru-btn-delete"
-                                                        title="Hapus jadwal"
-                                                    >
-                                                        Hapus
-                                                    </button>
-                                                </form>
-                                            @endif
-
-                                        </div>
-
-                                    </div>
-
-                                @endforeach
-
-                            </div>
-
-                        @endif
-
-                    @endforeach
-
-                @else
-
-                    <div class="guru-empty-state">
-                        <strong>Belum Ada Jadwal</strong>
-                        Jadwal mengajar yang kamu tambahkan akan muncul di bagian ini.
-                    </div>
-
-                @endif
-
-            </div>
-        </section>
-
-    </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-
-    const tingkat = document.getElementById('tingkat');
-    const jurusan = document.getElementById('jurusanid');
-    const kelas = document.getElementById('kelasid');
-
-    const hari = document.getElementById('hari');
-    const jamMulai = document.getElementById('jamMulaiKe');
-    const jamSelesai = document.getElementById('jamSelesaiKe');
-    const preview = document.getElementById('previewWaktu');
-
-    /*
-    |--------------------------------------------------------------------------
-    | FILTER KELAS BERDASARKAN TINGKAT DAN JURUSAN
-    |--------------------------------------------------------------------------
-    */
-
-    function filterKelas() {
-
-        if (!tingkat || !jurusan || !kelas) {
-            return;
-        }
-
-        const tingkatDipilih = tingkat.value;
-        const jurusanDipilih = jurusan.value;
-
-        Array.from(kelas.options).forEach(function (option) {
-
-            if (!option.dataset.tingkat) {
-                option.hidden = false;
-                return;
-            }
-
-            const cocokTingkat =
-                !tingkatDipilih ||
-                option.dataset.tingkat === tingkatDipilih;
-
-            const cocokJurusan =
-                !jurusanDipilih ||
-                option.dataset.jurusan === jurusanDipilih;
-
-            const cocok = cocokTingkat && cocokJurusan;
-
-            option.hidden = !cocok;
-
-            if (!cocok && kelas.value === option.value) {
-                kelas.value = '';
-            }
-        });
-    }
-
-    if (tingkat) {
-        tingkat.addEventListener('change', filterKelas);
-    }
-
-    if (jurusan) {
-        jurusan.addEventListener('change', filterKelas);
-    }
-
-    filterKelas();
-
-    /*
-    |--------------------------------------------------------------------------
-    | HITUNG JAM PELAJARAN OTOMATIS
-    |--------------------------------------------------------------------------
-    */
-
-    function buatDaftarWaktu() {
-
-        let menitSekarang = (7 * 60) + 15;
-
-        const daftar = {};
-
-        for (let i = 1; i <= 7; i++) {
-
-            const mulai = menitSekarang;
-            const selesai = mulai + 45;
-
-            daftar[i] = {
-                mulai: formatWaktu(mulai),
-                selesai: formatWaktu(selesai)
-            };
-
-            menitSekarang = selesai;
-
-            if (i === 2) {
-                menitSekarang += 15;
-            }
-
-            if (i === 5) {
-                menitSekarang += 60;
-            }
-        }
-
-        return daftar;
-    }
-
-    function formatWaktu(totalMenit) {
-
-        const jam = Math.floor(totalMenit / 60);
-        const menit = totalMenit % 60;
-
-        return String(jam).padStart(2, '0') +
-            ':' +
-            String(menit).padStart(2, '0');
-    }
-
-    function perbaruiPreview() {
-
-        if (!hari || !jamMulai || !jamSelesai || !preview) {
-            return;
-        }
-
-        if (!hari.value || !jamMulai.value || !jamSelesai.value) {
-            preview.textContent =
-                'Pilih hari dan jam pelajaran untuk melihat waktu mulai dan selesai.';
-            return;
-        }
-
-        const mulaiNomor = parseInt(jamMulai.value, 10);
-        const selesaiNomor = parseInt(jamSelesai.value, 10);
-
-        if (selesaiNomor < mulaiNomor) {
-            preview.textContent =
-                'Jam pelajaran selesai tidak boleh lebih awal dari jam mulai.';
-            return;
-        }
-
-        const daftar = buatDaftarWaktu();
-
-        preview.innerHTML =
-            '<strong>Perkiraan waktu jadwal:</strong><br>' +
-            'Mulai: ' + daftar[mulaiNomor].mulai + '<br>' +
-            'Selesai: ' + daftar[selesaiNomor].selesai;
-    }
-
-    if (hari) {
-        hari.addEventListener('change', perbaruiPreview);
-    }
-
-    if (jamMulai) {
-        jamMulai.addEventListener('change', perbaruiPreview);
-    }
-
-    if (jamSelesai) {
-        jamSelesai.addEventListener('change', perbaruiPreview);
-    }
-
-    perbaruiPreview();
-});
-</script>
 
 @endsection

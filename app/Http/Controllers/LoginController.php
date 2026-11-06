@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use App\Models\User;
 
 class LoginController extends Controller
 {
@@ -18,100 +18,73 @@ class LoginController extends Controller
     }
 
     /**
-     * Proses login semua jenis akun SCP.
+     * Proses login seluruh jenis akun SCP.
      */
     public function login(Request $request)
     {
         $request->validate([
-            'identitas' => 'required|string',
-            'password' => 'required|string',
-            'jenisakun' => 'required|in:siswa,orangtua,guru,bk,waka,kelas',
+            'identitas' => ['required', 'string', 'max:100'],
+            'password' => ['required', 'string'],
+            'jenisakun' => [
+                'required',
+                'in:siswa,orangtua,guru,bk,waka,kelas',
+            ],
         ]);
 
-        $identitas = trim($request->identitas);
-        $jenisAkun = $request->jenisakun;
+        $identitas = trim($request->input('identitas'));
+        $password = $request->input('password');
+        $jenisAkun = $request->input('jenisakun');
 
-        $user = null;
-
-        /*
-        |--------------------------------------------------------------------------
-        | LOGIN SISWA
-        |--------------------------------------------------------------------------
-        */
-        if ($jenisAkun === 'siswa') {
-            $user = User::where('nisn', $identitas)
-                ->where('role', 'siswa')
-                ->where('status', 'aktif')
-                ->first();
+        // Pastikan identitas tidak hanya berisi spasi.
+        if ($identitas === '') {
+            return back()
+                ->withErrors([
+                    'identitas' => 'Identitas wajib diisi.',
+                ])
+                ->withInput([
+                    'jenisakun' => $jenisAkun,
+                ]);
         }
 
         /*
         |--------------------------------------------------------------------------
-        | LOGIN ORANG TUA
+        | MENENTUKAN KOLOM IDENTITAS
         |--------------------------------------------------------------------------
         */
-        elseif ($jenisAkun === 'orangtua') {
-            $user = User::where('nisn', $identitas)
-                ->where('role', 'orangtua')
-                ->where('status', 'aktif')
-                ->first();
+
+        $kolomIdentitas = match ($jenisAkun) {
+            'siswa', 'orangtua' => 'nisn',
+            'guru', 'bk', 'waka' => 'kodepegawai',
+            'kelas' => 'kodekelas',
+            default => null,
+        };
+
+        if (!$kolomIdentitas) {
+            return back()
+                ->withErrors([
+                    'identitas' => 'Jenis akun tidak valid.',
+                ]);
         }
 
         /*
         |--------------------------------------------------------------------------
-        | LOGIN GURU
+        | MENCARI AKUN
         |--------------------------------------------------------------------------
         */
-        elseif ($jenisAkun === 'guru') {
-            $user = User::where('kodepegawai', $identitas)
-                ->where('role', 'guru')
-                ->where('status', 'aktif')
-                ->first();
-        }
 
-        /*
-        |--------------------------------------------------------------------------
-        | LOGIN BK
-        |--------------------------------------------------------------------------
-        */
-        elseif ($jenisAkun === 'bk') {
-            $user = User::where('kodepegawai', $identitas)
-                ->where('role', 'bk')
-                ->where('status', 'aktif')
-                ->first();
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | LOGIN WAKA
-        |--------------------------------------------------------------------------
-        */
-        elseif ($jenisAkun === 'waka') {
-            $user = User::where('kodepegawai', $identitas)
-                ->where('role', 'waka')
-                ->where('status', 'aktif')
-                ->first();
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | LOGIN KELAS
-        |--------------------------------------------------------------------------
-        | Identitas login menggunakan kodekelas.
-        */
-        elseif ($jenisAkun === 'kelas') {
-            $user = User::where('kodekelas', $identitas)
-                ->where('role', 'kelas')
-                ->where('status', 'aktif')
-                ->first();
-        }
+        $user = User::query()
+            ->where($kolomIdentitas, $identitas)
+            ->where('role', $jenisAkun)
+            ->where('status', 'aktif')
+            ->first();
 
         /*
         |--------------------------------------------------------------------------
         | VERIFIKASI PASSWORD
         |--------------------------------------------------------------------------
         */
-        if (!$user || !Hash::check($request->password, $user->password)) {
+
+        if (!$user || !Hash::check($password, $user->password)) {
             return back()
                 ->withErrors([
                     'identitas' => 'Identitas atau password salah.',
@@ -127,7 +100,8 @@ class LoginController extends Controller
         | VERIFIKASI HUBUNGAN AKUN KELAS
         |--------------------------------------------------------------------------
         */
-        if ($user->role === 'kelas') {
+
+        if ($jenisAkun === 'kelas') {
             if (!$user->kelasid || !$user->kelas) {
                 return back()
                     ->withErrors([
@@ -145,7 +119,9 @@ class LoginController extends Controller
         | LOGIN DAN REGENERASI SESSION
         |--------------------------------------------------------------------------
         */
+
         Auth::login($user);
+
         $request->session()->regenerate();
 
         /*
@@ -153,37 +129,35 @@ class LoginController extends Controller
         | REDIRECT SESUAI ROLE
         |--------------------------------------------------------------------------
         */
-        switch ($user->role) {
-            case 'guru':
-                return redirect()->route('guru.dashboard');
 
-            case 'waka':
-                return redirect()->route('waka.dashboard');
+        $routeDashboard = match ($user->role) {
+            'guru' => 'guru.dashboard',
+            'waka' => 'waka.dashboard',
+            'siswa' => 'dashboard',
+            'orangtua' => 'orangtua.dashboard',
+            'bk' => 'bk.dashboard',
+            'kelas' => 'kelas.dashboard',
+            default => null,
+        };
 
-            case 'siswa':
-                return redirect()->route('dashboard');
+        // Jika route dashboard tidak dikenali.
+        if (!$routeDashboard) {
+            Auth::logout();
 
-            case 'orangtua':
-                return redirect()->route('orangtua.dashboard');
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
 
-            case 'bk':
-                return redirect()->route('bk.dashboard');
-
-            case 'kelas':
-                return redirect()->route('kelas.dashboard');
-
-            default:
-                Auth::logout();
-
-                return redirect()->route('login')
-                    ->withErrors([
-                        'identitas' => 'Jenis akun tidak dikenali.',
-                    ]);
+            return redirect()->route('login')
+                ->withErrors([
+                    'identitas' => 'Jenis akun tidak dikenali.',
+                ]);
         }
+
+        return redirect()->route($routeDashboard);
     }
 
     /**
-     * Logout user.
+     * Logout pengguna.
      */
     public function logout(Request $request)
     {

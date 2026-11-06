@@ -1,4 +1,3 @@
-
 @extends('layouts.app')
 
 @section('title', 'Jurnal Mengajar - SCP')
@@ -185,7 +184,7 @@
             </div>
 
             <div class="history-count">
-                <span>{{ $jurnal->count() }}</span>
+                <span>{{ $jurnal->total() }}</span>
                 jurnal
             </div>
         </div>
@@ -193,6 +192,11 @@
         <div class="card-body jurnal-history-body">
 
             @forelse($jurnal as $item)
+
+                @php
+                    $jurnalHariIniItem = \Carbon\Carbon::parse($item->tanggal)
+                        ->toDateString() === ($tanggalHariIni ?? now()->toDateString());
+                @endphp
 
                 <div class="jurnal-item">
 
@@ -291,6 +295,7 @@
                             <a
                                 href="{{ asset('storage/' . $item->fotobukti) }}"
                                 target="_blank"
+                                rel="noopener noreferrer"
                                 class="jurnal-photo-link"
                             >
                                 <img
@@ -311,32 +316,43 @@
                             </div>
                         @endif
 
-                        {{-- TOMBOL EDIT --}}
-                        <a
-                            href="{{ route('jurnal.guru.edit', $item->id) }}"
-                            class="btn btn-primary jurnal-edit-btn"
-                        >
-                            <i class="fa-solid fa-pen-to-square"></i>
-                            Edit
-                        </a>
+                        @if($jurnalHariIniItem)
 
-                        {{-- TOMBOL HAPUS TETAP ADA --}}
-                        <form
-                            action="{{ route('jurnal.guru.destroy', $item->id) }}"
-                            method="POST"
-                            onsubmit="return confirm('Yakin ingin menghapus jurnal ini?')"
-                        >
-                            @csrf
-                            @method('DELETE')
-
-                            <button
-                                type="submit"
-                                class="btn btn-danger jurnal-delete-btn"
+                            {{-- HANYA JURNAL HARI INI YANG BISA DIEDIT --}}
+                            <a
+                                href="{{ route('jurnal.guru.edit', $item->id) }}"
+                                class="btn btn-primary jurnal-edit-btn"
                             >
-                                <i class="fa-regular fa-trash-can"></i>
-                                Hapus
-                            </button>
-                        </form>
+                                <i class="fa-solid fa-pen-to-square"></i>
+                                Edit
+                            </a>
+
+                            {{-- HANYA JURNAL HARI INI YANG BISA DIHAPUS --}}
+                            <form
+                                action="{{ route('jurnal.guru.destroy', $item->id) }}"
+                                method="POST"
+                                onsubmit="return confirm('Yakin ingin menghapus jurnal ini?')"
+                            >
+                                @csrf
+                                @method('DELETE')
+
+                                <button
+                                    type="submit"
+                                    class="btn btn-danger jurnal-delete-btn"
+                                >
+                                    <i class="fa-regular fa-trash-can"></i>
+                                    Hapus
+                                </button>
+                            </form>
+
+                        @else
+
+                            <div class="jurnal-locked">
+                                <i class="fa-solid fa-lock"></i>
+                                Tidak dapat diubah
+                            </div>
+
+                        @endif
 
                     </div>
 
@@ -355,6 +371,14 @@
             @endforelse
 
         </div>
+
+        {{-- PAGINATION --}}
+        @if($jurnal->hasPages())
+            <div class="jurnal-pagination">
+                {{ $jurnal->links() }}
+            </div>
+        @endif
+
     </div>
 
 </div>
@@ -802,8 +826,6 @@
     font-size: 18px;
 }
 
-/* TOMBOL EDIT BARU */
-
 .jurnal-edit-btn {
     min-height: 34px;
     width: 115px;
@@ -816,8 +838,6 @@
     text-decoration: none;
 }
 
-/* TOMBOL HAPUS TETAP */
-
 .jurnal-delete-btn {
     min-height: 34px;
     width: 115px;
@@ -827,6 +847,22 @@
 
 .jurnal-side form {
     width: 115px;
+}
+
+.jurnal-locked {
+    width: 115px;
+    min-height: 34px;
+    padding: 7px 5px;
+    border-radius: 8px;
+    background: #f1f3f6;
+    color: #7b8493;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-size: 9px;
+    font-weight: 700;
+    text-align: center;
 }
 
 .jurnal-empty {
@@ -858,6 +894,66 @@
     margin: 6px 0 18px;
     color: var(--muted);
     font-size: 11px;
+}
+
+/* PAGINATION */
+
+.jurnal-pagination {
+    padding: 18px 20px;
+    border-top: 1px solid var(--line);
+}
+
+.jurnal-pagination nav {
+    display: flex;
+    justify-content: center;
+}
+
+.jurnal-pagination nav > div:first-child {
+    display: none;
+}
+
+.jurnal-pagination nav > div:last-child {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+}
+
+.jurnal-pagination a,
+.jurnal-pagination span[aria-current="page"] span,
+.jurnal-pagination span[aria-disabled="true"] span {
+    min-width: 34px;
+    min-height: 34px;
+    padding: 7px 11px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    background: #fff;
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.jurnal-pagination a:hover {
+    background: var(--blue-soft);
+    border-color: var(--blue);
+    color: var(--blue);
+}
+
+.jurnal-pagination span[aria-current="page"] span {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: #fff;
+}
+
+.jurnal-pagination span[aria-disabled="true"] span {
+    color: #a0a8b5;
+    background: #f7f8fa;
+    cursor: not-allowed;
 }
 
 @media (max-width: 1000px) {
@@ -939,6 +1035,10 @@
 
     .jurnal-side {
         flex-wrap: wrap;
+    }
+
+    .jurnal-pagination {
+        padding: 14px 10px;
     }
 }
 

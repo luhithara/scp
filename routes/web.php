@@ -123,11 +123,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/guru/jadwal', [JadwalController::class, 'index'])
         ->name('guru.jadwal');
 
-   Route::post('/guru/jadwal', [JadwalController::class, 'store'])
-    ->name('guru.jadwal.simpan');
+    Route::post('/guru/jadwal', [JadwalController::class, 'store'])
+        ->name('guru.jadwal.simpan');
 
-    Route::delete('/guru/jadwal/{id}', [GuruController::class, 'hapusJadwal'])
-        ->name('guru.jadwal.hapus');
+    Route::delete('/guru/jadwal/{id}', [JadwalController::class, 'destroy'])
+    ->name('guru.jadwal.hapus');
 
 
     /*
@@ -187,15 +187,12 @@ Route::middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    // Menampilkan notifikasi milik user yang sedang login
     Route::get('/notifikasi', [NotifikasiController::class, 'index'])
         ->name('notifikasi.index');
 
-    // Menandai semua notifikasi sebagai sudah dibaca
     Route::post('/notifikasi/baca-semua', [NotifikasiController::class, 'bacaSemua'])
         ->name('notifikasi.bacaSemua');
 
-    // Menandai satu notifikasi sebagai sudah dibaca
     Route::post('/notifikasi/{id}/baca', [NotifikasiController::class, 'baca'])
         ->name('notifikasi.baca');
 
@@ -393,8 +390,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/bk/butuh-penanganan', [BKController::class, 'butuhPenanganan'])
         ->name('bk.butuh-penanganan');
 
+    // HALAMAN PERIZINAN BK
     Route::get('/bk/izin', [BKController::class, 'izin'])
         ->name('bk.izin');
+
+    // SETUJUI PERIZINAN
+    Route::post('/bk/izin/{id}/setujui', [BKController::class, 'setujuiIzin'])
+        ->name('bk.izin.setujui');
+
+    // TOLAK PERIZINAN
+    Route::post('/bk/izin/{id}/tolak', [BKController::class, 'tolakIzin'])
+        ->name('bk.izin.tolak');
 
 
     /*

@@ -18,29 +18,16 @@ class JadwalSiswaController extends Controller
     {
         $user = Auth::user();
 
-        /*
-        |--------------------------------------------------------------------------
-        | CARI DATA SISWA
-        |--------------------------------------------------------------------------
-        */
+        // Pastikan hanya akun siswa yang bisa mengakses.
+        if (!$user || strtolower(trim($user->role ?? '')) !== 'siswa') {
+            abort(403, 'Halaman ini hanya untuk siswa.');
+        }
 
+        // Cari data siswa berdasarkan NISN akun login.
         $siswa = DB::table('siswa')
-            ->join(
-                'kelas',
-                'siswa.kelasid',
-                '=',
-                'kelas.id'
-            )
-            ->leftJoin(
-                'jurusan',
-                'kelas.jurusanid',
-                '=',
-                'jurusan.id'
-            )
-            ->where(
-                'siswa.nisn',
-                $user->nisn
-            )
+            ->join('kelas', 'siswa.kelasid', '=', 'kelas.id')
+            ->leftJoin('jurusan', 'kelas.jurusanid', '=', 'jurusan.id')
+            ->where('siswa.nisn', $user->nisn)
             ->select(
                 'siswa.id',
                 'siswa.nisn',
@@ -53,82 +40,35 @@ class JadwalSiswaController extends Controller
             )
             ->first();
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | CEK DATA SISWA
-        |--------------------------------------------------------------------------
-        */
-
         if (!$siswa) {
-            abort(
-                404,
-                'Data siswa tidak ditemukan.'
-            );
+            abort(404, 'Data siswa tidak ditemukan.');
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | TANGGAL HARI INI
-        |--------------------------------------------------------------------------
-        */
-
+        // Tanggal hari ini.
         $hariIni = Carbon::today()->toDateString();
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | JADWAL KELAS SISWA
-        |--------------------------------------------------------------------------
-        |
-        | Hanya mengambil jadwal dengan kelasid yang sama dengan kelas siswa,
-        | jadi siswa tidak akan melihat jadwal kelas lain.
-        |
-        */
-
+        // Ambil jadwal khusus kelas siswa.
         $jadwal = DB::table('jadwal')
-            ->join(
-                'guru',
-                'jadwal.guruid',
-                '=',
-                'guru.id'
-            )
-            ->leftJoin(
-                'mapel',
-                'jadwal.mapelid',
-                '=',
-                'mapel.id'
-            )
-            ->where(
-                'jadwal.kelasid',
-                $siswa->kelasid
-            )
+            ->join('guru', 'jadwal.guruid', '=', 'guru.id')
+            ->leftJoin('mapel', 'jadwal.mapelid', '=', 'mapel.id')
+            ->where('jadwal.kelasid', $siswa->kelasid)
             ->select(
                 'jadwal.id',
-
                 'jadwal.kelasid',
                 'jadwal.guruid',
                 'jadwal.mapelid',
-
                 'jadwal.namamapel',
-
                 'jadwal.hari',
-
                 'jadwal.jamke',
-
                 'jadwal.jamMulai',
                 'jadwal.jamSelesai',
-
                 'jadwal.putaranblok',
                 'jadwal.blok',
-
                 'guru.nama as namaguru',
-
                 'mapel.namamapel as namamapelmaster'
             )
             ->orderByRaw("
-                CASE jadwal.hari
+                CASE LOWER(jadwal.hari)
                     WHEN 'senin' THEN 1
                     WHEN 'selasa' THEN 2
                     WHEN 'rabu' THEN 3
@@ -137,130 +77,25 @@ class JadwalSiswaController extends Controller
                     ELSE 6
                 END
             ")
-            ->orderBy(
-                'jadwal.jamMulai'
-            )
+            ->orderBy('jadwal.jamMulai')
             ->get();
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | TENTUKAN PUTARAN YANG SEDANG AKTIF
-        |--------------------------------------------------------------------------
-        |
-        | putaranblok berasal dari input jadwal guru.
-        |
-        */
-
+        // Tentukan putaran yang ditemukan pada jadwal kelas.
         $putaranAktif = $jadwal
             ->pluck('putaranblok')
             ->filter()
             ->unique()
             ->values();
 
+        $putaranSekarang = $putaranAktif->count() === 1
+            ? $putaranAktif->first()
+            : null;
 
-        if ($putaranAktif->count() === 1) {
-
-            $putaranSekarang = $putaranAktif->first();
-
-        } elseif ($putaranAktif->count() > 1) {
-
-            /*
-            | Kalau ada lebih dari satu putaran pada periode yang sama,
-            | jangan menghilangkan jadwal yang sudah diinput guru.
-            */
-
-            $putaranSekarang = null;
-
-        } else {
-
-            $putaranSekarang = null;
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | JURNAL SESUAI KELAS SISWA
-        |--------------------------------------------------------------------------
-        |
-        | Jurnal hanya berasal dari jadwal kelas siswa.
-        |
-        */
-
-        $jurnal = DB::table('jurnal_mengajar')
-            ->join(
-                'jadwal',
-                'jurnal_mengajar.jadwalid',
-                '=',
-                'jadwal.id'
-            )
-            ->join(
-                'guru',
-                'jurnal_mengajar.guruid',
-                '=',
-                'guru.id'
-            )
-            ->leftJoin(
-                'mapel',
-                'jadwal.mapelid',
-                '=',
-                'mapel.id'
-            )
-            ->where(
-                'jadwal.kelasid',
-                $siswa->kelasid
-            )
-            ->select(
-                'jurnal_mengajar.id',
-
-                'jurnal_mengajar.tanggal',
-
-                'jurnal_mengajar.materi',
-
-                'jurnal_mengajar.kegiatan',
-
-                'jurnal_mengajar.catatan',
-
-                'jadwal.hari',
-
-                'jadwal.jamMulai',
-
-                'jadwal.jamSelesai',
-
-                'jadwal.putaranblok',
-
-                'jadwal.blok',
-
-                'jadwal.namamapel',
-
-                'mapel.namamapel as namamapelmaster',
-
-                'guru.nama as namaguru'
-            )
-            ->orderByDesc(
-                'jurnal_mengajar.tanggal'
-            )
-            ->orderByDesc(
-                'jurnal_mengajar.id'
-            )
-            ->get();
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | KIRIM KE VIEW
-        |--------------------------------------------------------------------------
-        */
-
-        return view(
-            'jadwalSiswa',
-            compact(
-                'siswa',
-                'jadwal',
-                'jurnal',
-                'putaranSekarang',
-                'hariIni'
-            )
-        );
+        return view('jadwalSiswa', compact(
+            'siswa',
+            'jadwal',
+            'putaranSekarang',
+            'hariIni'
+        ));
     }
 }

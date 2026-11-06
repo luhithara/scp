@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Presensi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -19,12 +18,10 @@ class PresensiController extends Controller
     {
         $user = Auth::user();
 
-        // Hanya guru
-        if (!$user || $user->role !== 'guru') {
-            abort(403);
+        if (!$user || strtolower(trim($user->role ?? '')) !== 'guru') {
+            abort(403, 'Akses hanya untuk Guru.');
         }
 
-        // DATA GURU
         $guru = DB::table('guru')
             ->where('kodeguru', $user->kodepegawai)
             ->first();
@@ -33,55 +30,53 @@ class PresensiController extends Controller
             abort(404, 'Data guru tidak ditemukan.');
         }
 
-        // DAFTAR TINGKAT
         $tingkatList = DB::table('jadwal')
-            ->where('guruid', $guru->id)
-            ->whereNotNull('tingkat')
-            ->select('tingkat')
+            ->leftJoin('kelas', 'jadwal.kelasid', '=', 'kelas.id')
+            ->where('jadwal.guruid', $guru->id)
+            ->whereNotNull('kelas.tingkat')
+            ->select('kelas.tingkat')
             ->distinct()
-            ->orderBy('tingkat')
+            ->orderBy('kelas.tingkat')
             ->pluck('tingkat');
 
-        // DAFTAR JURUSAN
         $jurusanList = DB::table('jadwal')
-            ->join('jurusan', 'jadwal.jurusanid', '=', 'jurusan.id')
+            ->leftJoin('kelas', 'jadwal.kelasid', '=', 'kelas.id')
+            ->leftJoin('jurusan', 'kelas.jurusanid', '=', 'jurusan.id')
             ->where('jadwal.guruid', $guru->id)
-            ->whereNotNull('jadwal.jurusanid')
+            ->whereNotNull('kelas.jurusanid')
             ->select('jurusan.id', 'jurusan.namajurusan')
             ->distinct()
             ->orderBy('jurusan.namajurusan')
             ->get();
 
-        // DAFTAR MAPEL
         $mapelList = DB::table('jadwal')
-            ->where('guruid', $guru->id)
-            ->whereNotNull('namamapel')
-            ->where('namamapel', '!=', '')
-            ->select('namamapel')
+            ->join('mapel', 'jadwal.mapelid', '=', 'mapel.id')
+            ->where('jadwal.guruid', $guru->id)
+            ->whereNotNull('mapel.namamapel')
+            ->where('mapel.namamapel', '!=', '')
+            ->select('mapel.namamapel')
             ->distinct()
-            ->orderBy('namamapel')
+            ->orderBy('mapel.namamapel')
             ->pluck('namamapel');
 
-        // DAFTAR HARI
         $hariList = DB::table('jadwal')
             ->where('guruid', $guru->id)
             ->whereNotNull('hari')
             ->select('hari')
             ->distinct()
             ->orderByRaw("
-                CASE hari
-                    WHEN 'Senin' THEN 1
-                    WHEN 'Selasa' THEN 2
-                    WHEN 'Rabu' THEN 3
-                    WHEN 'Kamis' THEN 4
-                    WHEN 'Jumat' THEN 5
-                    WHEN 'Sabtu' THEN 6
+                CASE LOWER(hari)
+                    WHEN 'senin' THEN 1
+                    WHEN 'selasa' THEN 2
+                    WHEN 'rabu' THEN 3
+                    WHEN 'kamis' THEN 4
+                    WHEN 'jumat' THEN 5
+                    WHEN 'sabtu' THEN 6
                     ELSE 7
                 END
             ")
             ->pluck('hari');
 
-        // DAFTAR JAM
         $jamList = DB::table('jadwal')
             ->where('guruid', $guru->id)
             ->select('jamMulai', 'jamSelesai')
@@ -89,64 +84,101 @@ class PresensiController extends Controller
             ->orderBy('jamMulai')
             ->get();
 
-        // QUERY JADWAL
+        /*
+        |--------------------------------------------------------------------------
+        | QUERY JADWAL
+        |--------------------------------------------------------------------------
+        */
+
         $query = DB::table('jadwal')
-            ->leftJoin('jurusan', 'jadwal.jurusanid', '=', 'jurusan.id')
+            ->leftJoin('mapel', 'jadwal.mapelid', '=', 'mapel.id')
             ->leftJoin('kelas', 'jadwal.kelasid', '=', 'kelas.id')
+            ->leftJoin('jurusan', 'kelas.jurusanid', '=', 'jurusan.id')
             ->where('jadwal.guruid', $guru->id);
 
-        // FILTER TINGKAT
         if ($request->filled('tingkat')) {
-            $query->where('jadwal.tingkat', $request->tingkat);
+            $query->where('kelas.tingkat', $request->tingkat);
         }
 
-        // FILTER JURUSAN
         if ($request->filled('jurusanid')) {
-            $query->where('jadwal.jurusanid', $request->jurusanid);
+            $query->where('kelas.jurusanid', $request->jurusanid);
         }
 
-        // FILTER MAPEL
         if ($request->filled('namamapel')) {
-            $query->where('jadwal.namamapel', $request->namamapel);
+            $query->where('mapel.namamapel', $request->namamapel);
         }
 
-        // FILTER HARI
         if ($request->filled('hari')) {
             $query->where('jadwal.hari', $request->hari);
         }
 
-        // FILTER JAM MULAI
         if ($request->filled('jamMulai')) {
             $query->where('jadwal.jamMulai', $request->jamMulai);
         }
 
-        // FILTER JAM SELESAI
         if ($request->filled('jamSelesai')) {
             $query->where('jadwal.jamSelesai', $request->jamSelesai);
         }
 
-        // AMBIL JADWAL
+        $jumlahSiswaPerKelas = DB::table('siswa')
+            ->select(
+                'kelasid',
+                DB::raw('COUNT(*) as jumlah_siswa')
+            )
+            ->groupBy('kelasid');
+
         $jadwal = $query
+            ->leftJoinSub(
+                $jumlahSiswaPerKelas,
+                'jumlah_siswa_kelas',
+                function ($join) {
+                    $join->on(
+                        'jadwal.kelasid',
+                        '=',
+                        'jumlah_siswa_kelas.kelasid'
+                    );
+                }
+            )
             ->select(
                 'jadwal.*',
+                'mapel.namamapel',
+                'kelas.namakelas',
+                'kelas.tingkat',
+                'kelas.jurusanid',
                 'jurusan.namajurusan',
-                'kelas.namakelas'
+                DB::raw('COALESCE(jumlah_siswa_kelas.jumlah_siswa, 0) as jumlah_siswa')
             )
             ->orderByRaw("
-                CASE jadwal.hari
-                    WHEN 'Senin' THEN 1
-                    WHEN 'Selasa' THEN 2
-                    WHEN 'Rabu' THEN 3
-                    WHEN 'Kamis' THEN 4
-                    WHEN 'Jumat' THEN 5
-                    WHEN 'Sabtu' THEN 6
+                CASE LOWER(jadwal.hari)
+                    WHEN 'senin' THEN 1
+                    WHEN 'selasa' THEN 2
+                    WHEN 'rabu' THEN 3
+                    WHEN 'kamis' THEN 4
+                    WHEN 'jumat' THEN 5
+                    WHEN 'sabtu' THEN 6
                     ELSE 7
                 END
             ")
             ->orderBy('jadwal.jamMulai')
             ->get();
 
-        // VARIABEL BLADE
+        $tanggalHariIni = now()->toDateString();
+
+        $rekapPresensi = DB::table('presensi')
+            ->whereIn('jadwalid', $jadwal->pluck('id'))
+            ->where('tanggal_presensi', $tanggalHariIni)
+            ->select(
+                'jadwalid',
+                DB::raw("SUM(CASE WHEN status = 'hadir' THEN 1 ELSE 0 END) as jumlah_hadir"),
+                DB::raw("SUM(CASE WHEN status = 'sakit' THEN 1 ELSE 0 END) as jumlah_sakit"),
+                DB::raw("SUM(CASE WHEN status = 'izin' THEN 1 ELSE 0 END) as jumlah_izin"),
+                DB::raw("SUM(CASE WHEN status = 'alpa' THEN 1 ELSE 0 END) as jumlah_alpa"),
+                DB::raw('COUNT(*) as jumlah_terisi')
+            )
+            ->groupBy('jadwalid')
+            ->get()
+            ->keyBy('jadwalid');
+
         $tingkat = $request->tingkat;
         $jurusan = $request->jurusanid;
         $namamapel = $request->namamapel;
@@ -154,26 +186,24 @@ class PresensiController extends Controller
         $jamMulai = $request->jamMulai;
         $jamSelesai = $request->jamSelesai;
 
-        // RETURN VIEW
-        return view(
-            'presensi',
-            compact(
-                'user',
-                'guru',
-                'tingkat',
-                'tingkatList',
-                'jurusan',
-                'jurusanList',
-                'namamapel',
-                'mapelList',
-                'hari',
-                'hariList',
-                'jamMulai',
-                'jamSelesai',
-                'jamList',
-                'jadwal'
-            )
-        );
+        return view('presensi', compact(
+            'user',
+            'guru',
+            'tingkat',
+            'tingkatList',
+            'jurusan',
+            'jurusanList',
+            'namamapel',
+            'mapelList',
+            'hari',
+            'hariList',
+            'jamMulai',
+            'jamSelesai',
+            'jamList',
+            'jadwal',
+            'rekapPresensi',
+            'tanggalHariIni'
+        ));
     }
 
     /*
@@ -186,11 +216,10 @@ class PresensiController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || $user->role !== 'guru') {
-            abort(403);
+        if (!$user || strtolower(trim($user->role ?? '')) !== 'guru') {
+            abort(403, 'Akses hanya untuk Guru.');
         }
 
-        // DATA GURU
         $guru = DB::table('guru')
             ->where('kodeguru', $user->kodepegawai)
             ->first();
@@ -199,16 +228,18 @@ class PresensiController extends Controller
             abort(404, 'Data guru tidak ditemukan.');
         }
 
-        // CARI JADWAL MILIK GURU
         $jadwal = DB::table('jadwal')
-            ->leftJoin('jurusan', 'jadwal.jurusanid', '=', 'jurusan.id')
+            ->leftJoin('mapel', 'jadwal.mapelid', '=', 'mapel.id')
             ->leftJoin('kelas', 'jadwal.kelasid', '=', 'kelas.id')
+            ->leftJoin('jurusan', 'kelas.jurusanid', '=', 'jurusan.id')
             ->where('jadwal.id', $jadwalid)
             ->where('jadwal.guruid', $guru->id)
             ->select(
                 'jadwal.*',
-                'jurusan.namajurusan',
-                'kelas.namakelas'
+                'mapel.namamapel',
+                'kelas.namakelas',
+                'kelas.tingkat',
+                'jurusan.namajurusan'
             )
             ->first();
 
@@ -216,7 +247,6 @@ class PresensiController extends Controller
             abort(404, 'Jadwal tidak ditemukan.');
         }
 
-        // AMBIL SISWA SESUAI KELAS
         $siswa = collect();
 
         if (!empty($jadwal->kelasid)) {
@@ -226,39 +256,50 @@ class PresensiController extends Controller
                 ->get();
         }
 
-        // PRESENSI HARI INI
+        $tanggalHariIni = now()->toDateString();
+
         $presensi = DB::table('presensi')
             ->where('jadwalid', $jadwal->id)
-            ->whereDate('waktu', now()->toDateString())
+            ->where('tanggal_presensi', $tanggalHariIni)
             ->get()
             ->keyBy('siswaid');
 
-        // RETURN FORM
-        return view(
-            'presensi_form',
-            compact(
-                'user',
-                'guru',
-                'jadwal',
-                'siswa',
-                'presensi'
-            )
-        );
+        return view('presensi_form', compact(
+            'user',
+            'guru',
+            'jadwal',
+            'siswa',
+            'presensi',
+            'tanggalHariIni'
+        ));
     }
 
     /*
     |--------------------------------------------------------------------------
-    | SIMPAN PRESENSI
+    | SIMPAN DAN UBAH PRESENSI
     |--------------------------------------------------------------------------
     */
 
     public function store(Request $request, $jadwalid)
     {
-        // VALIDASI
-        $request->validate([
+        $user = Auth::user();
+
+        if (!$user || strtolower(trim($user->role ?? '')) !== 'guru') {
+            abort(403, 'Akses hanya untuk Guru.');
+        }
+
+        $tanggalHariIni = now()->toDateString();
+
+        $validated = $request->validate([
+            'tanggal_presensi' => [
+                'required',
+                'date',
+                'date_equals:' . $tanggalHariIni,
+            ],
             'status' => [
                 'required',
-                'array'
+                'array',
+                'min:1'
             ],
             'status.*' => [
                 'required',
@@ -275,14 +316,12 @@ class PresensiController extends Controller
             ],
         ]);
 
-        // USER
-        $user = Auth::user();
-
-        if (!$user || $user->role !== 'guru') {
-            abort(403);
+        if ($validated['tanggal_presensi'] !== now()->toDateString()) {
+            return back()->withErrors([
+                'tanggal_presensi' => 'Waktu pengisian presensi sudah berakhir.'
+            ]);
         }
 
-        // GURU
         $guru = DB::table('guru')
             ->where('kodeguru', $user->kodepegawai)
             ->first();
@@ -291,87 +330,121 @@ class PresensiController extends Controller
             abort(404, 'Data guru tidak ditemukan.');
         }
 
-        // JADWAL
         $jadwal = DB::table('jadwal')
-            ->where('id', $jadwalid)
-            ->where('guruid', $guru->id)
+            ->leftJoin('mapel', 'jadwal.mapelid', '=', 'mapel.id')
+            ->where('jadwal.id', $jadwalid)
+            ->where('jadwal.guruid', $guru->id)
+            ->select('jadwal.*', 'mapel.namamapel')
             ->first();
 
         if (!$jadwal) {
-            abort(404, 'Jadwal tidak ditemukan atau bukan milik guru.');
+            abort(404, 'Jadwal tidak ditemukan atau bukan milik Guru.');
         }
 
-        // CEK SISWA DALAM KELAS
         if (empty($jadwal->kelasid)) {
-            return back()
-                ->withErrors([
-                    'jadwal' => 'Jadwal ini belum memiliki kelas.'
-                ]);
+            return back()->withErrors([
+                'jadwal' => 'Jadwal ini belum memiliki kelas.'
+            ])->withInput();
         }
 
-        // SIMPAN / UPDATE PRESENSI
+        $statusInput = $validated['status'];
+        $siswaIds = array_keys($statusInput);
+
+        $siswaValid = DB::table('siswa')
+            ->where('kelasid', $jadwal->kelasid)
+            ->whereIn('id', $siswaIds)
+            ->pluck('id')
+            ->map(fn ($id) => (string) $id)
+            ->all();
+
+        $siswaInput = array_map('strval', $siswaIds);
+
+        if (
+            count($siswaValid) !== count($siswaInput) ||
+            count(array_unique($siswaInput)) !== count($siswaInput)
+        ) {
+            return back()->withErrors([
+                'status' => 'Terdapat siswa yang tidak sesuai dengan kelas jadwal.'
+            ])->withInput();
+        }
+
+        $waktuSekarang = now();
         $jumlahTersimpan = 0;
 
-        foreach ($request->status as $siswaid => $status) {
+        DB::transaction(function () use (
+            $statusInput,
+            $request,
+            $jadwal,
+            $tanggalHariIni,
+            $waktuSekarang,
+            &$jumlahTersimpan,
+            $guru,
+            $user
+        ) {
+            foreach ($statusInput as $siswaid => $status) {
 
-            // Pastikan siswa memang berada di kelas jadwal
-            $siswa = DB::table('siswa')
-                ->where('id', $siswaid)
-                ->where('kelasid', $jadwal->kelasid)
-                ->first();
+                $keterangan = $request->input(
+                    'keterangan.' . $siswaid
+                );
 
-            if (!$siswa) {
-                continue;
-            }
-
-            // Update kalau sudah ada, insert kalau belum ada
-            Presensi::updateOrCreate(
-                [
-                    'siswaid' => $siswaid,
-                    'jadwalid' => $jadwal->id,
-                ],
-                [
+                $dataPresensi = [
                     'status' => $status,
-                    'keterangan' => $request->keterangan[$siswaid] ?? null,
-                    'waktu' => now(),
-                ]
-            );
+                    'keterangan' => $keterangan,
+                    'waktu' => $waktuSekarang,
+                    'updated_at' => $waktuSekarang,
+                ];
 
-            $jumlahTersimpan++;
-        }
+                $presensiLama = DB::table('presensi')
+                    ->where('siswaid', $siswaid)
+                    ->where('jadwalid', $jadwal->id)
+                    ->where('tanggal_presensi', $tanggalHariIni)
+                    ->first();
 
-        /*
-        |--------------------------------------------------------------------------
-        | KIRIM NOTIFIKASI KE WAKA
-        |--------------------------------------------------------------------------
-        */
+                if ($presensiLama) {
+                    DB::table('presensi')
+                        ->where('id', $presensiLama->id)
+                        ->update($dataPresensi);
+                } else {
+                    DB::table('presensi')->insert([
+                        'siswaid' => $siswaid,
+                        'jadwalid' => $jadwal->id,
+                        'tanggal_presensi' => $tanggalHariIni,
+                        'status' => $status,
+                        'keterangan' => $keterangan,
+                        'waktu' => $waktuSekarang,
+                        'created_at' => $waktuSekarang,
+                        'updated_at' => $waktuSekarang,
+                    ]);
+                }
 
-        if ($jumlahTersimpan > 0) {
-
-            $wakaIds = DB::table('users')
-                ->whereRaw('LOWER(role) = ?', ['waka'])
-                ->pluck('id');
-
-            foreach ($wakaIds as $wakaId) {
-                DB::table('notifikasi')->insert([
-                    'userid' => $wakaId,
-                    'judul' => 'Presensi siswa diperbarui',
-                    'pesan' => ($guru->nama ?? $user->name)
-                        . ' mengisi presensi untuk '
-                        . ($jadwal->namamapel ?? 'jadwal mengajar')
-                        . ' pada kelas '
-                        . ($jadwal->tingkat ?? '')
-                        . '.',
-                    'jenis' => 'presensi',
-                    'url' => route('waka.dashboard'),
-                    'sudahdibaca' => false,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                $jumlahTersimpan++;
             }
-        }
 
-        // KEMBALI
+            if ($jumlahTersimpan > 0) {
+                $wakaIds = DB::table('users')
+                    ->whereRaw('LOWER(role) = ?', ['waka'])
+                    ->pluck('id');
+
+                foreach ($wakaIds as $wakaId) {
+                    DB::table('notifikasi')->insert([
+                        'userid' => $wakaId,
+                        'judul' => 'Presensi siswa diperbarui',
+                        'pesan' => ($guru->nama ?? $user->name)
+                            . ' mengisi presensi untuk '
+                            . ($jadwal->namamapel ?? 'jadwal mengajar')
+                            . ' pada kelas '
+                            . ($jadwal->tingkat ?? '')
+                            . '.',
+                        'jenis' => 'presensi',
+                        'url' => route('waka.dashboard'),
+                        'sudahdibaca' => false,
+                        'created_at' => $waktuSekarang,
+                        'updated_at' => $waktuSekarang,
+                    ]);
+                }
+            }
+        });
+
         return redirect()
             ->route('presensi')
             ->with('success', 'Presensi berhasil disimpan.');

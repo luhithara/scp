@@ -79,6 +79,7 @@
         padding: 0 16px;
         font-size: 12px;
         font-weight: 600;
+        cursor: pointer;
     }
 
     .table-card {
@@ -180,6 +181,30 @@
         padding: 35px !important;
     }
 
+    .pagination-wrap {
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .pagination-info {
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    .pagination-wrap nav {
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .pagination-wrap nav svg {
+        width: 16px;
+        height: 16px;
+    }
+
     @media(max-width:700px) {
         .filter-grid {
             grid-template-columns: 1fr;
@@ -187,6 +212,11 @@
 
         .btn {
             width: 100%;
+        }
+
+        .pagination-wrap {
+            align-items: flex-start;
+            flex-direction: column;
         }
     }
 </style>
@@ -202,9 +232,7 @@
     </div>
 
     <div class="filter">
-
         <form method="GET" action="{{ route('waka.jurnal') }}">
-
             <div class="filter-grid">
 
                 <div class="field">
@@ -231,30 +259,24 @@
                 </button>
 
             </div>
-
         </form>
-
     </div>
 
     <div class="table-card">
 
         <div class="table-head">
-
             <div>
                 <h3>Daftar Jurnal</h3>
                 <p>Catatan kegiatan pembelajaran guru.</p>
             </div>
 
             <span class="count">
-                {{ count($dataJurnal) }} jurnal
+                {{ method_exists($dataJurnal, 'total') ? $dataJurnal->total() : $dataJurnal->count() }} jurnal
             </span>
-
         </div>
 
         <div class="table-wrap">
-
             <table>
-
                 <thead>
                     <tr>
                         <th>No</th>
@@ -266,7 +288,6 @@
                 </thead>
 
                 <tbody>
-
                     @forelse($dataJurnal as $index => $jurnal)
 
                         @php
@@ -285,8 +306,9 @@
                         @endphp
 
                         <tr>
-
-                            <td>{{ $index + 1 }}</td>
+                            <td>
+                                {{ method_exists($dataJurnal, 'firstItem') ? $dataJurnal->firstItem() + $index : $index + 1 }}
+                            </td>
 
                             <td>
                                 <div class="guru">
@@ -323,24 +345,30 @@
                                     -
                                 @endif
                             </td>
-
                         </tr>
 
                     @empty
-
                         <tr>
                             <td colspan="5" class="empty">
                                 Belum ada jurnal mengajar.
                             </td>
                         </tr>
-
                     @endforelse
-
                 </tbody>
-
             </table>
-
         </div>
+
+        @if(method_exists($dataJurnal, 'hasPages') && $dataJurnal->hasPages())
+            <div class="pagination-wrap">
+                <div class="pagination-info">
+                    Menampilkan {{ $dataJurnal->firstItem() }}
+                    sampai {{ $dataJurnal->lastItem() }}
+                    dari {{ $dataJurnal->total() }} jurnal
+                </div>
+
+                {{ $dataJurnal->links() }}
+            </div>
+        @endif
 
     </div>
 

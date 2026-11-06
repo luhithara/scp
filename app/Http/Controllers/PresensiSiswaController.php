@@ -2,261 +2,110 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Presensi;
 use App\Models\Siswa;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class PresensiSiswaController extends Controller
 {
-    /**
-     * ============================================================
-     * RIWAYAT PRESENSI SISWA
-     * ============================================================
-     *
-     * Halaman ini digunakan oleh siswa untuk melihat:
-     *
-     * - Hari
-     * - Tanggal
-     * - Status kehadiran
-     * - Keterangan
-     *
-     * Keterangan diambil dari:
-     *
-     * 1. presensi.keterangan
-     * 2. Jika kosong, ambil dari izin_siswa.alasan
-     *
-     * ============================================================
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | RIWAYAT PRESENSI SISWA
+    |--------------------------------------------------------------------------
+    */
+
     public function index()
     {
-        /*
-         * ========================================================
-         * CEK USER LOGIN
-         * ========================================================
-         */
-
         $user = Auth::user();
 
-        if (!$user) {
-            return redirect()->route('login');
+        // Pastikan hanya siswa yang bisa mengakses.
+        if (!$user || strtolower(trim($user->role ?? '')) !== 'siswa') {
+            abort(403, 'Halaman ini hanya untuk siswa.');
         }
 
-
-        /*
-         * ========================================================
-         * AMBIL DATA SISWA
-         * ========================================================
-         *
-         * Sistem SCP menggunakan NISN pada users
-         * untuk menghubungkan akun dengan data siswa.
-         */
-
+        // Cari data siswa berdasarkan NISN akun login.
         $siswa = Siswa::where('nisn', $user->nisn)->first();
 
-
-        /*
-         * Kalau data siswa tidak ditemukan,
-         * jangan biarkan halaman error.
-         */
-
         if (!$siswa) {
-
-            return view(
-                'presensi.siswa',
-                [
-                    'siswa'    => null,
-                    'presensi' => collect(),
-                ]
-            );
+            abort(404, 'Data siswa tidak ditemukan.');
         }
 
-
         /*
-         * ========================================================
-         * AMBIL RIWAYAT PRESENSI
-         * ========================================================
-         *
-         * presensi
-         *      ↓
-         * jadwal
-         *      ↓
-         * guru
-         *
-         * Kemudian dihubungkan dengan izin_siswa
-         * berdasarkan siswa dan tanggal.
-         */
+        |--------------------------------------------------------------------------
+        | AMBIL RIWAYAT PRESENSI
+        |--------------------------------------------------------------------------
+        */
 
         $presensi = DB::table('presensi')
-
-            /*
-             * ----------------------------------------------------
-             * JADWAL
-             * ----------------------------------------------------
-             */
-
-            ->leftJoin(
-                'jadwal',
-                'jadwal.id',
-                '=',
-                'presensi.jadwalid'
-            )
-
-
-            /*
-             * ----------------------------------------------------
-             * GURU
-             * ----------------------------------------------------
-             */
-
-            ->leftJoin(
-                'guru',
-                'guru.id',
-                '=',
-                'jadwal.guruid'
-            )
-
-
-            /*
-             * ----------------------------------------------------
-             * IZIN SISWA
-             * ----------------------------------------------------
-             *
-             * Cocokkan:
-             *
-             * izin_siswa.siswaid
-             * dengan
-             * siswa yang sedang login.
-             *
-             * Dan tanggal izin dengan tanggal presensi.
-             */
-
-            ->leftJoin(
-                'izin_siswa',
-                function ($join) {
-
-                    $join->on(
-                        'izin_siswa.siswaid',
-                        '=',
-                        'presensi.siswaid'
-                    )
-
-                    ->whereRaw(
-                        'DATE(izin_siswa.tanggal) = DATE(presensi.waktu)'
-                    );
-                }
-            )
-
-
-            /*
-             * ====================================================
-             * FILTER SISWA
-             * ====================================================
-             */
-
-            ->where(
-                'presensi.siswaid',
-                $siswa->id
-            )
-
-
-            /*
-             * ====================================================
-             * SELECT DATA
-             * ====================================================
-             */
-
+            ->leftJoin('jadwal', 'jadwal.id', '=', 'presensi.jadwalid')
+            ->leftJoin('guru', 'guru.id', '=', 'jadwal.guruid')
             ->select(
-
-                /*
-                 * Semua data presensi.
-                 */
-
-                'presensi.*',
-
-
-                /*
-                 * Informasi jadwal.
-                 */
-
+                'presensi.id',
+                'presensi.siswaid',
+                'presensi.jadwalid',
+                'presensi.tanggal_presensi',
+                'presensi.waktu',
+                'presensi.status',
+                'presensi.keterangan',
                 'jadwal.hari',
-
                 'jadwal.jamMulai',
-
                 'jadwal.jamSelesai',
-
                 'jadwal.namamapel',
-
-
-                /*
-                 * Informasi guru.
-                 *
-                 * Kolom guru yang benar adalah `nama`,
-                 * bukan `namaguru`.
-                 */
-
-                'guru.nama as namaguru',
-
-
-                /*
-                 * =================================================
-                 * KETERANGAN
-                 * =================================================
-                 *
-                 * Prioritas:
-                 *
-                 * 1. presensi.keterangan
-                 * 2. izin_siswa.alasan
-                 *
-                 * Jadi kalau guru mengisi keterangan,
-                 * keterangan guru yang digunakan.
-                 *
-                 * Kalau kosong dan siswa punya izin/sakit,
-                 * alasan izin akan ditampilkan.
-                 */
-
-                DB::raw("
-                    COALESCE(
-                        NULLIF(presensi.keterangan, ''),
-                        izin_siswa.alasan
-                    ) AS keterangan
-                ")
-
+                'guru.nama as namaguru'
             )
-
-
-            /*
-             * ====================================================
-             * URUTKAN DATA
-             * ====================================================
-             */
-
-            ->orderByDesc(
-                'presensi.waktu'
-            )
-
-
-            /*
-             * ====================================================
-             * JALANKAN QUERY
-             * ====================================================
-             */
-
-            ->get();
-
+            ->where('presensi.siswaid', $siswa->id)
+            ->orderByDesc('presensi.tanggal_presensi')
+            ->orderByDesc('presensi.waktu')
+            ->orderByDesc('presensi.id')
+            ->paginate(10)
+            ->withQueryString();
 
         /*
-         * ========================================================
-         * KIRIM DATA KE BLADE
-         * ========================================================
-         */
+        |--------------------------------------------------------------------------
+        | AMBIL ALASAN IZIN
+        |--------------------------------------------------------------------------
+        */
 
-        return view(
-            'presensi.siswa',
-            compact(
-                'presensi',
-                'siswa'
-            )
-        );
+        $tanggalPresensi = $presensi
+            ->getCollection()
+            ->pluck('tanggal_presensi')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $izin = DB::table('izin_siswa')
+            ->where('siswaid', $siswa->id)
+            ->whereIn('tanggal', $tanggalPresensi)
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy(function ($item) {
+                return date('Y-m-d', strtotime($item->tanggal));
+            });
+
+        /*
+        |--------------------------------------------------------------------------
+        | GABUNGKAN KETERANGAN PRESENSI DAN IZIN
+        |--------------------------------------------------------------------------
+        */
+
+        foreach ($presensi as $item) {
+            $tanggal = $item->tanggal_presensi;
+
+            $izinHariIni = $izin->get($tanggal, collect())->first();
+
+            $item->keterangan = $item->keterangan
+                ?: ($izinHariIni->alasan ?? null);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | KIRIM KE VIEW
+        |--------------------------------------------------------------------------
+        */
+
+        return view('presensi.siswa', compact(
+            'presensi',
+            'siswa'
+        ));
     }
 }

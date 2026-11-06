@@ -6,44 +6,43 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
-{
-    Schema::create('presensi', function (Blueprint $table) {
-        $table->id();
+    {
+        Schema::create('presensi', function (Blueprint $table) {
+            $table->id();
 
-        $table->foreignId('siswaid')
-            ->constrained('siswa')
-            ->cascadeOnUpdate()
-            ->cascadeOnDelete();
+            $table->foreignId('siswaid')
+                ->constrained('siswa')
+                ->cascadeOnUpdate()
+                ->cascadeOnDelete();
 
-        $table->foreignId('jadwalid')
-            ->constrained('jadwal')
-            ->cascadeOnUpdate()
-            ->cascadeOnDelete();
+            $table->foreignId('jadwalid')
+                ->constrained('jadwal')
+                ->cascadeOnUpdate()
+                ->cascadeOnDelete();
 
-        $table->enum('status', [
-            'hadir',
-            'sakit',
-            'izin',
-            'alpa'
-        ]);
+            $table->date('tanggal_presensi');
 
-        $table->text('keterangan')->nullable();
+            $table->enum('status', [
+                'hadir',
+                'sakit',
+                'izin',
+                'alpa'
+            ]);
 
-        $table->timestamp('waktu')->useCurrent();
+            $table->text('keterangan')->nullable();
 
-        $table->timestamps();
+            $table->timestamp('waktu')->useCurrent();
 
-        $table->unique(['siswaid', 'jadwalid']);
-    });
-}
+            $table->timestamps();
 
-    /**
-     * Reverse the migrations.
-     */
+            $table->unique(
+                ['siswaid', 'jadwalid', 'tanggal_presensi'],
+                'presensi_siswa_jadwal_tanggal_unique'
+            );
+        });
+    }
+
     public function down(): void
     {
         Schema::dropIfExists('presensi');

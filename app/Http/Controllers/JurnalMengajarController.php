@@ -16,8 +16,8 @@ class JurnalMengajarController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || $user->role !== 'guru') {
-            abort(403);
+        if (!$user || strtolower(trim($user->role ?? '')) !== 'guru') {
+            abort(403, 'Akses hanya untuk guru.');
         }
 
         $guru = DB::table('guru')
@@ -32,47 +32,58 @@ class JurnalMengajarController extends Controller
     }
 
     /**
-     * Halaman daftar jurnal guru.
+     * Mendapatkan nama hari ini dalam bahasa Indonesia.
      */
-    public function index(Request $request)
+    private function getHariIni(): string
     {
-        $user = Auth::user();
+        $daftarHari = [
+            1 => 'senin',
+            2 => 'selasa',
+            3 => 'rabu',
+            4 => 'kamis',
+            5 => 'jumat',
+            6 => 'sabtu',
+            7 => 'minggu',
+        ];
 
-        if (!$user || $user->role !== 'guru') {
-            abort(403);
-        }
+        return $daftarHari[now()->dayOfWeekIso];
+    }
 
-        $guru = $this->getGuru();
-
-        $jadwal = DB::table('jadwal')
+    /**
+     * Query jadwal beserta nama mapel milik guru.
+     */
+    private function queryJadwalGuru($guruId)
+    {
+        return DB::table('jadwal')
+            ->leftJoin('mapel', 'jadwal.mapelid', '=', 'mapel.id')
             ->leftJoin('jurusan', 'jadwal.jurusanid', '=', 'jurusan.id')
             ->leftJoin('kelas', 'jadwal.kelasid', '=', 'kelas.id')
-            ->where('jadwal.guruid', $guru->id)
+            ->where('jadwal.guruid', $guruId)
             ->select(
                 'jadwal.*',
+                'mapel.namamapel',
                 'jurusan.namajurusan',
                 'kelas.namakelas'
-            )
-            ->orderByRaw("
-                CASE LOWER(jadwal.hari)
-                    WHEN 'senin' THEN 1
-                    WHEN 'selasa' THEN 2
-                    WHEN 'rabu' THEN 3
-                    WHEN 'kamis' THEN 4
-                    WHEN 'jumat' THEN 5
-                    WHEN 'sabtu' THEN 6
-                    ELSE 7
-                END
-            ")
-            ->orderBy('jadwal.jamMulai')
-            ->get();
+            );
+    }
 
-        $jurnalQuery = DB::table('jurnal_mengajar')
+    /**
+     * Query riwayat jurnal milik guru.
+     */
+    private function queryJurnalGuru($guruId)
+    {
+        return DB::table('jurnal_mengajar')
             ->leftJoin(
                 'jadwal',
                 'jurnal_mengajar.jadwalid',
                 '=',
                 'jadwal.id'
+            )
+            ->leftJoin(
+                'mapel',
+                'jadwal.mapelid',
+                '=',
+                'mapel.id'
             )
             ->leftJoin(
                 'jurusan',
@@ -86,7 +97,62 @@ class JurnalMengajarController extends Controller
                 '=',
                 'kelas.id'
             )
-            ->where('jurnal_mengajar.guruid', $guru->id);
+            ->where('jurnal_mengajar.guruid', $guruId)
+            ->select(
+                'jurnal_mengajar.*',
+                'jadwal.hari',
+                'jadwal.jamMulai',
+                'jadwal.jamSelesai',
+                'jadwal.tingkat',
+                'mapel.namamapel',
+                'jadwal.kelasid',
+                'jurusan.namajurusan',
+                'kelas.namakelas'
+            );
+    }
+
+    /**
+     * Memastikan jurnal masih boleh diubah.
+     */
+    private function pastikanJurnalHariIni($jurnal): void
+    {
+        if (
+            !$jurnal ||
+            \Carbon\Carbon::parse($jurnal->tanggal)->toDateString()
+                !== now()->toDateString()
+        ) {
+            abort(
+                403,
+                'Jurnal hanya dapat diedit atau dihapus pada hari yang sama.'
+            );
+        }
+    }
+
+    /**
+     * Halaman daftar jurnal guru.
+     */
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+        $guru = $this->getGuru();
+
+        $jadwal = $this->queryJadwalGuru($guru->id)
+            ->orderByRaw("
+                CASE LOWER(jadwal.hari)
+                    WHEN 'senin' THEN 1
+                    WHEN 'selasa' THEN 2
+                    WHEN 'rabu' THEN 3
+                    WHEN 'kamis' THEN 4
+                    WHEN 'jumat' THEN 5
+                    WHEN 'sabtu' THEN 6
+                    WHEN 'minggu' THEN 7
+                    ELSE 8
+                END
+            ")
+            ->orderBy('jadwal.jamMulai')
+            ->get();
+
+        $jurnalQuery = $this->queryJurnalGuru($guru->id);
 
         if ($request->filled('tanggal')) {
             $jurnalQuery->where(
@@ -103,20 +169,10 @@ class JurnalMengajarController extends Controller
         }
 
         $jurnal = $jurnalQuery
-            ->select(
-                'jurnal_mengajar.*',
-                'jadwal.hari',
-                'jadwal.jamMulai',
-                'jadwal.jamSelesai',
-                'jadwal.tingkat',
-                'jadwal.namamapel',
-                'jadwal.kelasid',
-                'jurusan.namajurusan',
-                'kelas.namakelas'
-            )
             ->orderByDesc('jurnal_mengajar.tanggal')
             ->orderByDesc('jurnal_mengajar.id')
-            ->get();
+            ->paginate(10)
+            ->withQueryString();
 
         $jurnalHariIni = DB::table('jurnal_mengajar')
             ->where('guruid', $guru->id)
@@ -127,6 +183,8 @@ class JurnalMengajarController extends Controller
             ->where('guruid', $guru->id)
             ->count();
 
+        $tanggalHariIni = now()->toDateString();
+
         return view(
             'jurnal.guru',
             compact(
@@ -135,7 +193,8 @@ class JurnalMengajarController extends Controller
                 'jadwal',
                 'jurnal',
                 'jurnalHariIni',
-                'jumlahJurnal'
+                'jumlahJurnal',
+                'tanggalHariIni'
             )
         );
     }
@@ -146,80 +205,20 @@ class JurnalMengajarController extends Controller
     public function create()
     {
         $user = Auth::user();
-
-        if (!$user || $user->role !== 'guru') {
-            abort(403);
-        }
-
         $guru = $this->getGuru();
+        $hariIni = $this->getHariIni();
 
-        $jadwal = DB::table('jadwal')
-            ->leftJoin(
-                'jurusan',
-                'jadwal.jurusanid',
-                '=',
-                'jurusan.id'
-            )
-            ->leftJoin(
-                'kelas',
-                'jadwal.kelasid',
-                '=',
-                'kelas.id'
-            )
-            ->where('jadwal.guruid', $guru->id)
-            ->select(
-                'jadwal.*',
-                'jurusan.namajurusan',
-                'kelas.namakelas'
-            )
-            ->orderByRaw("
-                CASE LOWER(jadwal.hari)
-                    WHEN 'senin' THEN 1
-                    WHEN 'selasa' THEN 2
-                    WHEN 'rabu' THEN 3
-                    WHEN 'kamis' THEN 4
-                    WHEN 'jumat' THEN 5
-                    WHEN 'sabtu' THEN 6
-                    ELSE 7
-                END
-            ")
+        // Hanya jadwal milik guru login pada hari ini.
+        // Nama mapel diambil dari tabel mapel.
+        $jadwal = $this->queryJadwalGuru($guru->id)
+            ->whereRaw('LOWER(TRIM(jadwal.hari)) = ?', [$hariIni])
             ->orderBy('jadwal.jamMulai')
             ->get();
 
-        $jurnal = DB::table('jurnal_mengajar')
-            ->leftJoin(
-                'jadwal',
-                'jurnal_mengajar.jadwalid',
-                '=',
-                'jadwal.id'
-            )
-            ->leftJoin(
-                'jurusan',
-                'jadwal.jurusanid',
-                '=',
-                'jurusan.id'
-            )
-            ->leftJoin(
-                'kelas',
-                'jadwal.kelasid',
-                '=',
-                'kelas.id'
-            )
-            ->where('jurnal_mengajar.guruid', $guru->id)
-            ->select(
-                'jurnal_mengajar.*',
-                'jadwal.hari',
-                'jadwal.jamMulai',
-                'jadwal.jamSelesai',
-                'jadwal.tingkat',
-                'jadwal.namamapel',
-                'jadwal.kelasid',
-                'jurusan.namajurusan',
-                'kelas.namakelas'
-            )
+        $jurnal = $this->queryJurnalGuru($guru->id)
             ->orderByDesc('jurnal_mengajar.tanggal')
             ->orderByDesc('jurnal_mengajar.id')
-            ->get();
+            ->paginate(5, ['*'], 'riwayat_page');
 
         $jurnalHariIni = DB::table('jurnal_mengajar')
             ->where('guruid', $guru->id)
@@ -230,6 +229,8 @@ class JurnalMengajarController extends Controller
             ->where('guruid', $guru->id)
             ->count();
 
+        $tanggalHariIni = now()->toDateString();
+
         return view(
             'jurnal.create',
             compact(
@@ -238,7 +239,8 @@ class JurnalMengajarController extends Controller
                 'jadwal',
                 'jurnal',
                 'jurnalHariIni',
-                'jumlahJurnal'
+                'jumlahJurnal',
+                'tanggalHariIni'
             )
         );
     }
@@ -249,11 +251,6 @@ class JurnalMengajarController extends Controller
     public function store(Request $request)
     {
         $user = Auth::user();
-
-        if (!$user || $user->role !== 'guru') {
-            abort(403);
-        }
-
         $guru = $this->getGuru();
 
         $file = $request->file('fotobukti');
@@ -272,7 +269,7 @@ class JurnalMengajarController extends Controller
                 UPLOAD_ERR_EXTENSION =>
                     'Upload foto dihentikan oleh ekstensi PHP.',
                 default =>
-                    'Foto gagal diunggah. Silakan pilih file lain dan coba lagi.',
+                    'Foto gagal diunggah. Silakan coba lagi.',
             };
 
             return back()
@@ -284,15 +281,13 @@ class JurnalMengajarController extends Controller
             return back()
                 ->withInput()
                 ->withErrors([
-                    'fotobukti' =>
-                        'Foto gagal diunggah. Periksa ukuran file dan konfigurasi upload server.',
+                    'fotobukti' => 'Foto gagal diunggah. Silakan ambil foto ulang.',
                 ]);
         }
 
         $validated = $request->validate(
             [
-                'jadwalid' => ['required', 'integer', 'exists:jadwal,id'],
-                'tanggal' => ['required', 'date'],
+                'jadwalid' => ['required', 'integer'],
                 'materi' => ['required', 'string', 'max:500'],
                 'kegiatan' => ['required', 'string', 'max:1000'],
                 'catatan' => ['nullable', 'string', 'max:1000'],
@@ -305,66 +300,69 @@ class JurnalMengajarController extends Controller
             ],
             [
                 'jadwalid.required' => 'Jadwal harus dipilih.',
-                'jadwalid.exists' => 'Jadwal tidak ditemukan.',
-                'tanggal.required' => 'Tanggal harus diisi.',
                 'materi.required' => 'Materi harus diisi.',
                 'kegiatan.required' => 'Kegiatan pembelajaran harus diisi.',
-                'fotobukti.required' => 'Foto bukti pembelajaran wajib diunggah.',
-                'fotobukti.image' => 'File foto harus berupa gambar.',
+                'fotobukti.required' => 'Foto bukti pembelajaran wajib diambil.',
+                'fotobukti.image' => 'Foto bukti harus berupa gambar.',
                 'fotobukti.mimes' => 'Format foto harus JPG, JPEG, PNG, atau WEBP.',
                 'fotobukti.max' => 'Ukuran foto maksimal 5 MB.',
             ]
         );
 
+        $hariIni = $this->getHariIni();
+        $tanggalHariIni = now()->toDateString();
+
+        // Pastikan jadwal milik guru login dan berlangsung hari ini.
         $jadwal = DB::table('jadwal')
-            ->where('id', $validated['jadwalid'])
-            ->where('guruid', $guru->id)
+            ->leftJoin('mapel', 'jadwal.mapelid', '=', 'mapel.id')
+            ->where('jadwal.id', $validated['jadwalid'])
+            ->where('jadwal.guruid', $guru->id)
+            ->whereRaw('LOWER(TRIM(jadwal.hari)) = ?', [$hariIni])
+            ->select(
+                'jadwal.*',
+                'mapel.namamapel'
+            )
             ->first();
 
         if (!$jadwal) {
             return back()
                 ->withInput()
                 ->withErrors([
-                    'jadwalid' => 'Jadwal tersebut bukan milik Anda.',
+                    'jadwalid' => 'Jadwal tidak valid atau bukan jadwal Anda hari ini.',
                 ]);
         }
 
         $jurnalSudahAda = DB::table('jurnal_mengajar')
             ->where('guruid', $guru->id)
             ->where('jadwalid', $jadwal->id)
-            ->whereDate('tanggal', $validated['tanggal'])
+            ->whereDate('tanggal', $tanggalHariIni)
             ->exists();
 
         if ($jurnalSudahAda) {
             return back()
                 ->withInput()
                 ->withErrors([
-                    'jurnal' => 'Jurnal untuk jadwal dan tanggal tersebut sudah dibuat.',
+                    'jurnal' => 'Jurnal untuk jadwal ini hari ini sudah dibuat.',
                 ]);
         }
 
-        $fotoPath = null;
+        $fotoPath = $request
+            ->file('fotobukti')
+            ->store('jurnal', 'public');
 
-        if ($request->hasFile('fotobukti')) {
-            $fotoPath = $request
-                ->file('fotobukti')
-                ->store('jurnal', 'public');
-
-            if (!$fotoPath) {
-                return back()
-                    ->withInput()
-                    ->withErrors([
-                        'fotobukti' =>
-                            'Foto gagal disimpan ke penyimpanan server. Silakan coba lagi.',
-                    ]);
-            }
+        if (!$fotoPath) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'fotobukti' => 'Foto gagal disimpan. Silakan coba lagi.',
+                ]);
         }
 
         try {
             DB::table('jurnal_mengajar')->insert([
                 'guruid' => $guru->id,
                 'jadwalid' => $jadwal->id,
-                'tanggal' => $validated['tanggal'],
+                'tanggal' => $tanggalHariIni,
                 'materi' => $validated['materi'],
                 'kegiatan' => $validated['kegiatan'],
                 'catatan' => $validated['catatan'] ?? null,
@@ -374,10 +372,7 @@ class JurnalMengajarController extends Controller
                 'updated_at' => now(),
             ]);
         } catch (\Throwable $e) {
-            if ($fotoPath) {
-                Storage::disk('public')->delete($fotoPath);
-            }
-
+            Storage::disk('public')->delete($fotoPath);
             throw $e;
         }
 
@@ -411,11 +406,6 @@ class JurnalMengajarController extends Controller
     public function edit($id)
     {
         $user = Auth::user();
-
-        if (!$user || $user->role !== 'guru') {
-            abort(403);
-        }
-
         $guru = $this->getGuru();
 
         $jurnal = DB::table('jurnal_mengajar')
@@ -427,26 +417,13 @@ class JurnalMengajarController extends Controller
             abort(404, 'Jurnal tidak ditemukan.');
         }
 
-        $jadwal = DB::table('jadwal')
-            ->leftJoin('jurusan', 'jadwal.jurusanid', '=', 'jurusan.id')
-            ->leftJoin('kelas', 'jadwal.kelasid', '=', 'kelas.id')
-            ->where('jadwal.guruid', $guru->id)
-            ->select(
-                'jadwal.*',
-                'jurusan.namajurusan',
-                'kelas.namakelas'
+        $this->pastikanJurnalHariIni($jurnal);
+
+        $jadwal = $this->queryJadwalGuru($guru->id)
+            ->whereRaw(
+                'LOWER(TRIM(jadwal.hari)) = ?',
+                [$this->getHariIni()]
             )
-            ->orderByRaw("
-                CASE LOWER(jadwal.hari)
-                    WHEN 'senin' THEN 1
-                    WHEN 'selasa' THEN 2
-                    WHEN 'rabu' THEN 3
-                    WHEN 'kamis' THEN 4
-                    WHEN 'jumat' THEN 5
-                    WHEN 'sabtu' THEN 6
-                    ELSE 7
-                END
-            ")
             ->orderBy('jadwal.jamMulai')
             ->get();
 
@@ -457,17 +434,11 @@ class JurnalMengajarController extends Controller
     }
 
     /**
-     * Memperbarui jurnal yang sudah tersimpan.
-     * Foto lama tetap digunakan jika tidak ada foto baru.
+     * Memperbarui jurnal hari ini.
      */
     public function update(Request $request, $id)
     {
         $user = Auth::user();
-
-        if (!$user || $user->role !== 'guru') {
-            abort(403);
-        }
-
         $guru = $this->getGuru();
 
         $jurnal = DB::table('jurnal_mengajar')
@@ -479,10 +450,11 @@ class JurnalMengajarController extends Controller
             abort(404, 'Jurnal tidak ditemukan.');
         }
 
+        $this->pastikanJurnalHariIni($jurnal);
+
         $validated = $request->validate(
             [
-                'jadwalid' => ['required', 'integer', 'exists:jadwal,id'],
-                'tanggal' => ['required', 'date'],
+                'jadwalid' => ['required', 'integer'],
                 'materi' => ['required', 'string', 'max:500'],
                 'kegiatan' => ['required', 'string', 'max:1000'],
                 'catatan' => ['nullable', 'string', 'max:1000'],
@@ -495,8 +467,6 @@ class JurnalMengajarController extends Controller
             ],
             [
                 'jadwalid.required' => 'Jadwal harus dipilih.',
-                'jadwalid.exists' => 'Jadwal tidak ditemukan.',
-                'tanggal.required' => 'Tanggal harus diisi.',
                 'materi.required' => 'Materi harus diisi.',
                 'kegiatan.required' => 'Kegiatan pembelajaran harus diisi.',
                 'fotobukti.image' => 'File bukti harus berupa gambar.',
@@ -508,20 +478,24 @@ class JurnalMengajarController extends Controller
         $jadwal = DB::table('jadwal')
             ->where('id', $validated['jadwalid'])
             ->where('guruid', $guru->id)
+            ->whereRaw(
+                'LOWER(TRIM(hari)) = ?',
+                [$this->getHariIni()]
+            )
             ->first();
 
         if (!$jadwal) {
             return back()
                 ->withInput()
                 ->withErrors([
-                    'jadwalid' => 'Jadwal tersebut bukan milik Anda.',
+                    'jadwalid' => 'Jadwal tidak valid atau bukan jadwal Anda hari ini.',
                 ]);
         }
 
         $duplikat = DB::table('jurnal_mengajar')
             ->where('guruid', $guru->id)
-            ->where('jadwalid', $validated['jadwalid'])
-            ->whereDate('tanggal', $validated['tanggal'])
+            ->where('jadwalid', $jadwal->id)
+            ->whereDate('tanggal', now()->toDateString())
             ->where('id', '<>', $id)
             ->exists();
 
@@ -529,7 +503,7 @@ class JurnalMengajarController extends Controller
             return back()
                 ->withInput()
                 ->withErrors([
-                    'jurnal' => 'Jurnal untuk jadwal dan tanggal tersebut sudah ada.',
+                    'jurnal' => 'Jurnal untuk jadwal tersebut hari ini sudah ada.',
                 ]);
         }
 
@@ -554,8 +528,8 @@ class JurnalMengajarController extends Controller
                 ->where('id', $id)
                 ->where('guruid', $guru->id)
                 ->update([
-                    'jadwalid' => $validated['jadwalid'],
-                    'tanggal' => $validated['tanggal'],
+                    'jadwalid' => $jadwal->id,
+                    'tanggal' => $jurnal->tanggal,
                     'materi' => $validated['materi'],
                     'kegiatan' => $validated['kegiatan'],
                     'catatan' => $validated['catatan'] ?? null,
@@ -598,6 +572,8 @@ class JurnalMengajarController extends Controller
                     'jurnal' => 'Jurnal tidak ditemukan.',
                 ]);
         }
+
+        $this->pastikanJurnalHariIni($jurnal);
 
         if ($jurnal->fotobukti) {
             Storage::disk('public')->delete($jurnal->fotobukti);

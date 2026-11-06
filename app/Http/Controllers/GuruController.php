@@ -18,8 +18,8 @@ class GuruController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || $user->role !== 'guru') {
-            abort(403);
+        if (!$user || strtolower(trim($user->role ?? '')) !== 'guru') {
+            abort(403, 'Akses hanya untuk Guru.');
         }
 
         $guru = DB::table('guru')
@@ -34,6 +34,7 @@ class GuruController extends Controller
                 ]);
         }
 
+        // Mengambil presensi siswa dari jadwal milik guru hari ini.
         $presensiHariIni = DB::table('presensi')
             ->join(
                 'jadwal',
@@ -41,10 +42,7 @@ class GuruController extends Controller
                 '=',
                 'jadwal.id'
             )
-            ->where(
-                'jadwal.guruid',
-                $guru->id
-            )
+            ->where('jadwal.guruid', $guru->id)
             ->whereDate(
                 'presensi.waktu',
                 now()->toDateString()
@@ -72,6 +70,7 @@ class GuruController extends Controller
             ->where('status', 'alpa')
             ->count();
 
+        // Mengambil izin siswa yang terhubung dengan jadwal guru ini.
         $izinHariIni = DB::table('izin_siswa')
             ->join(
                 'siswa',
@@ -79,11 +78,22 @@ class GuruController extends Controller
                 '=',
                 'siswa.id'
             )
+            ->join(
+                'jadwal',
+                'izin_siswa.jadwalid',
+                '=',
+                'jadwal.id'
+            )
             ->leftJoin(
                 'kelas',
                 'siswa.kelasid',
                 '=',
                 'kelas.id'
+            )
+            ->where('jadwal.guruid', $guru->id)
+            ->whereDate(
+                'izin_siswa.tanggal',
+                now()->toDateString()
             )
             ->select(
                 'izin_siswa.*',
@@ -91,13 +101,7 @@ class GuruController extends Controller
                 'siswa.nisn',
                 'kelas.namakelas'
             )
-            ->whereDate(
-                'izin_siswa.tanggal',
-                now()->toDateString()
-            )
-            ->orderByDesc(
-                'izin_siswa.waktu'
-            )
+            ->orderByDesc('izin_siswa.waktu')
             ->get();
 
         /*
@@ -114,8 +118,6 @@ class GuruController extends Controller
             ->where('guruid', $guru->id)
             ->count();
 
-        // Kartu "Pengajuan Izin" = jumlah izin siswa hari ini
-        // (sama dengan daftar izin di bawahnya).
         $jumlahIzin = $izinHariIni->count();
 
         return view(
@@ -146,56 +148,51 @@ class GuruController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || $user->role !== 'guru') {
-            abort(403);
+        if (!$user || strtolower(trim($user->role ?? '')) !== 'guru') {
+            abort(403, 'Akses hanya untuk Guru.');
         }
 
-        if (DB::table('pengaturan_jadwal')->where('id', 1)->value('terkunci')) {
-            return back()->with('error', 'Jadwal sedang dikunci oleh Waka. Penghapusan jadwal belum dapat dilakukan.');
+        // Memastikan jadwal tidak sedang dikunci oleh Waka.
+        $terkunci = DB::table('pengaturan_jadwal')
+            ->where('id', 1)
+            ->value('terkunci');
+
+        if ($terkunci) {
+            return back()->with(
+                'error',
+                'Jadwal sedang dikunci oleh Waka. Penghapusan jadwal belum dapat dilakukan.'
+            );
         }
 
         $guru = DB::table('guru')
-            ->where(
-                'kodeguru',
-                $user->kodepegawai
-            )
+            ->where('kodeguru', $user->kodepegawai)
             ->first();
 
         if (!$guru) {
-            abort(404);
+            abort(404, 'Data guru tidak ditemukan.');
         }
 
+        // Memastikan jadwal benar-benar milik guru yang login.
         $jadwal = DB::table('jadwal')
-            ->where(
-                'id',
-                $id
-            )
-            ->where(
-                'guruid',
-                $guru->id
-            )
+            ->where('id', $id)
+            ->where('guruid', $guru->id)
             ->first();
 
         if (!$jadwal) {
-            return back()
-                ->withErrors([
-                    'jadwal' =>
-                        'Jadwal tidak ditemukan atau bukan jadwal guru ini.'
-                ]);
+            return back()->withErrors([
+                'jadwal' => 'Jadwal tidak ditemukan atau bukan jadwal guru ini.'
+            ]);
         }
 
         DB::table('jadwal')
-            ->where(
-                'id',
-                $id
-            )
+            ->where('id', $id)
+            ->where('guruid', $guru->id)
             ->delete();
 
-        return back()
-            ->with(
-                'success',
-                'Jadwal berhasil dihapus.'
-            );
+        return back()->with(
+            'success',
+            'Jadwal berhasil dihapus.'
+        );
     }
 
 
@@ -209,29 +206,28 @@ class GuruController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user || $user->role !== 'guru') {
-            abort(403);
+        if (!$user || strtolower(trim($user->role ?? '')) !== 'guru') {
+            abort(403, 'Akses hanya untuk Guru.');
         }
 
         $guru = DB::table('guru')
-            ->where(
-                'kodeguru',
-                $user->kodepegawai
-            )
+            ->where('kodeguru', $user->kodepegawai)
             ->first();
 
         if (!$guru) {
-            abort(
-                404,
-                'Data guru tidak ditemukan.'
-            );
+            abort(404, 'Data guru tidak ditemukan.');
         }
 
+        // Data kelas untuk filter.
         $kelas = DB::table('kelas')
             ->orderBy('tingkat')
             ->orderBy('namakelas')
             ->get();
 
+        /*
+         * Hanya mengambil izin siswa yang mempunyai jadwal
+         * dengan guru yang sedang login.
+         */
         $query = DB::table('izin_siswa')
             ->join(
                 'siswa',
@@ -239,7 +235,7 @@ class GuruController extends Controller
                 '=',
                 'siswa.id'
             )
-            ->leftJoin(
+            ->join(
                 'jadwal',
                 'izin_siswa.jadwalid',
                 '=',
@@ -251,20 +247,10 @@ class GuruController extends Controller
                 '=',
                 'kelas.id'
             )
-            ->where(function ($query) use ($guru) {
+            ->where('jadwal.guruid', $guru->id);
 
-                $query
-                    ->whereNull(
-                        'izin_siswa.jadwalid'
-                    )
-                    ->orWhere(
-                        'jadwal.guruid',
-                        $guru->id
-                    );
-            });
-
+        // Filter berdasarkan kelas.
         if ($request->filled('kelasid')) {
-
             $query->where(
                 'siswa.kelasid',
                 $request->kelasid
@@ -278,12 +264,8 @@ class GuruController extends Controller
                 'siswa.nisn',
                 'kelas.namakelas'
             )
-            ->orderByDesc(
-                'izin_siswa.tanggal'
-            )
-            ->orderByDesc(
-                'izin_siswa.waktu'
-            )
+            ->orderByDesc('izin_siswa.tanggal')
+            ->orderByDesc('izin_siswa.waktu')
             ->get();
 
         return view(
