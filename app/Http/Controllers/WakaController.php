@@ -28,30 +28,6 @@ class WakaController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | QUERY JADWAL DASHBOARD
-    |--------------------------------------------------------------------------
-    */
-
-    private function queryJadwalDashboard()
-    {
-        return DB::table('jadwal')
-            ->leftJoin('guru', 'jadwal.guruid', '=', 'guru.id')
-            ->leftJoin('kelas', 'jadwal.kelasid', '=', 'kelas.id')
-            ->leftJoin('mapel', 'jadwal.mapelid', '=', 'mapel.id')
-            ->select(
-                'jadwal.*',
-                'guru.nama as namaguru',
-                'kelas.namakelas',
-                'kelas.tingkat',
-                'jadwal.blok as putaranblok',
-                DB::raw("COALESCE(NULLIF(jadwal.namamapel, ''), mapel.namamapel) as namamapel")
-            )
-            ->orderBy('jadwal.hari')
-            ->orderBy('jadwal.jamMulai');
-    }
-
-    /*
-    |--------------------------------------------------------------------------
     | DASHBOARD WAKA
     |--------------------------------------------------------------------------
     */
@@ -60,67 +36,7 @@ class WakaController extends Controller
     {
         $this->cekAksesWaka();
 
-        $hariIni = now()->toDateString();
-
-        $totalSiswa = DB::table('siswa')->count();
-        $totalGuru = DB::table('guru')->count();
-        $totalKelas = DB::table('kelas')->count();
-        $totalJadwal = DB::table('jadwal')->count();
-        $totalJurnal = DB::table('jurnal_mengajar')->count();
-
-        $presensiHariIni = DB::table('presensi')
-            ->whereDate('waktu', $hariIni);
-
-        $hadirHariIni = (clone $presensiHariIni)
-            ->where('status', 'hadir')
-            ->count();
-
-        $sakitHariIni = (clone $presensiHariIni)
-            ->where('status', 'sakit')
-            ->count();
-
-        $izinHariIni = (clone $presensiHariIni)
-            ->where('status', 'izin')
-            ->count();
-
-        $alpaHariIni = (clone $presensiHariIni)
-            ->where('status', 'alpa')
-            ->count();
-
-        $totalPresensiHariIni = (clone $presensiHariIni)->count();
-
-        $jurnalHariIni = DB::table('jurnal_mengajar')
-            ->whereDate('tanggal', $hariIni)
-            ->count();
-
-        $jadwal = $this->queryJadwalDashboard()->get();
-
-        $jadwalTingkat10 = $jadwal->where('tingkat', 10)->values();
-        $jadwalTingkat11 = $jadwal->where('tingkat', 11)->values();
-        $jadwalTingkat12 = $jadwal->where('tingkat', 12)->values();
-
-        $jadwalPutaran1 = $jadwal->where('putaranblok', 1)->values();
-        $jadwalPutaran2 = $jadwal->where('putaranblok', 2)->values();
-
-        return view('waka.dashboard', compact(
-            'totalSiswa',
-            'totalGuru',
-            'totalKelas',
-            'totalJadwal',
-            'totalJurnal',
-            'hadirHariIni',
-            'sakitHariIni',
-            'izinHariIni',
-            'alpaHariIni',
-            'totalPresensiHariIni',
-            'jurnalHariIni',
-            'jadwal',
-            'jadwalTingkat10',
-            'jadwalTingkat11',
-            'jadwalTingkat12',
-            'jadwalPutaran1',
-            'jadwalPutaran2'
-        ));
+        return view('waka.dashboard');
     }
 
     /*
