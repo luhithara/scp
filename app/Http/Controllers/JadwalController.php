@@ -378,6 +378,7 @@ class JadwalController extends Controller
             $namaMapel,
             $guru,
             $validated,
+            $nomorMulai,
             $jamMulai,
             $jamSelesai
         ) {
