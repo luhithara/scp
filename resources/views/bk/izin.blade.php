@@ -1,4 +1,3 @@
-
 @extends('layouts.app')
 
 @section('title', 'Perizinan Siswa - BK | SCP')
@@ -248,6 +247,11 @@
 
                 <tbody>
                     @forelse($data as $index => $item)
+
+                        @php
+                            $statusIzin = strtolower(trim((string) ($item->status ?? '')));
+                        @endphp
+
                         <tr>
 
                             {{-- NO --}}
@@ -261,6 +265,7 @@
                                     <div class="student-avatar">
                                         {{ strtoupper(substr($item->nama ?? '?', 0, 1)) }}
                                     </div>
+
                                     <div class="student-info">
                                         <strong>{{ $item->nama ?? '-' }}</strong>
                                         <span>NISN: {{ $item->nisn ?? '-' }}</span>
@@ -302,12 +307,12 @@
 
                             {{-- JENIS --}}
                             <td>
-                                @if(($item->jenis ?? '') === 'sakit')
+                                @if(strtolower($item->jenis ?? '') === 'sakit')
                                     <span class="type-badge sakit">
                                         <i class="fa-solid fa-notes-medical"></i>
                                         Sakit
                                     </span>
-                                @elseif(($item->jenis ?? '') === 'izin')
+                                @elseif(strtolower($item->jenis ?? '') === 'izin')
                                     <span class="type-badge izin">
                                         <i class="fa-solid fa-file-circle-check"></i>
                                         Izin
@@ -328,21 +333,24 @@
 
                             {{-- STATUS --}}
                             <td>
-                                @if(($item->status ?? '') === 'disetujui')
+                                @if($statusIzin === 'disetujui')
                                     <span class="status-badge approved">
                                         <i class="fa-solid fa-check"></i>
                                         Disetujui
                                     </span>
-                                @elseif(($item->status ?? '') === 'ditolak')
+
+                                @elseif($statusIzin === 'ditolak')
                                     <span class="status-badge rejected">
                                         <i class="fa-solid fa-xmark"></i>
                                         Ditolak
                                     </span>
-                                @elseif(($item->status ?? '') === 'menunggu')
+
+                                @elseif($statusIzin === 'menunggu')
                                     <span class="status-badge waiting">
                                         <i class="fa-solid fa-clock"></i>
                                         Menunggu
                                     </span>
+
                                 @else
                                     <span class="status-badge default">
                                         {{ $item->status ?? '-' }}
@@ -360,11 +368,13 @@
                                     <a
                                         href="{{ asset('storage/' . $buktiUtama) }}"
                                         target="_blank"
+                                        rel="noopener noreferrer"
                                         class="evidence-button"
                                     >
                                         <i class="fa-regular fa-file-image"></i>
                                         Lihat Bukti
                                     </a>
+
                                 @elseif(
                                     isset($item->buktiFiles)
                                     && $item->buktiFiles
@@ -375,6 +385,7 @@
                                             <a
                                                 href="{{ asset('storage/' . $bukti->file) }}"
                                                 target="_blank"
+                                                rel="noopener noreferrer"
                                                 class="evidence-button"
                                             >
                                                 <i class="fa-regular fa-file-image"></i>
@@ -389,22 +400,25 @@
 
                             {{-- AKSI --}}
                             <td>
-                                @if(($item->status ?? '') === 'menunggu')
+                                @if($statusIzin === 'menunggu')
 
                                     <div class="action-buttons">
 
+                                        {{-- SETUJUI --}}
                                         <form
                                             method="POST"
                                             action="{{ route('bk.izin.setujui', $item->id) }}"
                                             onsubmit="return confirm('Yakin ingin menyetujui perizinan siswa ini?')"
                                         >
                                             @csrf
+
                                             <button type="submit" class="action-button approve">
                                                 <i class="fa-solid fa-check"></i>
                                                 Setujui
                                             </button>
                                         </form>
 
+                                        {{-- TOLAK --}}
                                         <button
                                             type="button"
                                             class="action-button reject"
@@ -416,20 +430,24 @@
 
                                     </div>
 
-                                @elseif(($item->status ?? '') === 'disetujui')
+                                @elseif($statusIzin === 'disetujui')
+
                                     <span class="action-finished approved-finished">
                                         <i class="fa-solid fa-lock"></i>
-                                        Sudah diproses
+                                        Sudah disetujui
                                     </span>
 
-                                @elseif(($item->status ?? '') === 'ditolak')
+                                @elseif($statusIzin === 'ditolak')
+
                                     <span class="action-finished rejected-finished">
                                         <i class="fa-solid fa-lock"></i>
-                                        Sudah diproses
+                                        Sudah ditolak
                                     </span>
 
                                 @else
+
                                     <span class="muted">-</span>
+
                                 @endif
                             </td>
 
@@ -462,6 +480,7 @@
         <div class="information-icon">
             <i class="fa-solid fa-circle-info"></i>
         </div>
+
         <div class="information-content">
             <strong>Informasi Persetujuan</strong>
             <p>
@@ -483,6 +502,7 @@
             <div class="modal-icon reject-icon">
                 <i class="fa-solid fa-xmark"></i>
             </div>
+
             <div>
                 <h3>Tolak Perizinan</h3>
                 <p>Berikan catatan jika diperlukan.</p>
@@ -494,6 +514,7 @@
 
             <div class="form-field modal-field">
                 <label for="catatanbk">Catatan Penolakan</label>
+
                 <textarea
                     name="catatanbk"
                     id="catatanbk"
@@ -1438,11 +1459,30 @@
         document.getElementById('modalTolak').classList.remove('show');
     }
 
+    // Tutup modal jika area luar modal diklik.
     document.getElementById('modalTolak').addEventListener('click', function(event) {
         if (event.target === this) {
             tutupModalTolak();
         }
     });
+
+    // Tutup modal dengan tombol Escape.
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            tutupModalTolak();
+        }
+    });
+
+    // Refresh status agar keputusan Wali Kelas juga terlihat oleh BK.
+    setInterval(function() {
+        const modal = document.getElementById('modalTolak');
+
+        if (modal && modal.classList.contains('show')) {
+            return;
+        }
+
+        window.location.reload();
+    }, 15000);
 </script>
 @endpush
 

@@ -1,4 +1,3 @@
-
 <?php
 
 use Illuminate\Support\Facades\Route;
@@ -19,7 +18,9 @@ use App\Http\Controllers\BKController;
 use App\Http\Controllers\OrangtuaController;
 use App\Http\Controllers\JadwalController;
 use App\Http\Controllers\WakaDataController;
+use App\Http\Controllers\WakaImportController;
 use App\Http\Controllers\KelasAkunController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -39,7 +40,7 @@ Route::post('/logout', [LoginController::class, 'logout'])
 
 /*
 |--------------------------------------------------------------------------
-| FORGOT PASSWORD DENGAN OTP EMAIL
+| FORGOT PASSWORD
 |--------------------------------------------------------------------------
 */
 
@@ -127,7 +128,7 @@ Route::middleware('auth')->group(function () {
         ->name('guru.jadwal.simpan');
 
     Route::delete('/guru/jadwal/{id}', [JadwalController::class, 'destroy'])
-    ->name('guru.jadwal.hapus');
+        ->name('guru.jadwal.hapus');
 
 
     /*
@@ -342,6 +343,17 @@ Route::middleware('auth')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | WAKA - IMPOR DATA EXCEL / CSV / PDF
+    |--------------------------------------------------------------------------
+    */
+
+    Route::post('/waka/data/import/{jenis}', [WakaImportController::class, 'import'])
+        ->whereIn('jenis', ['siswa', 'guru', 'kelas'])
+        ->name('waka.data.import');
+
+
+    /*
+    |--------------------------------------------------------------------------
     | WAKA - DATA SEKOLAH
     |--------------------------------------------------------------------------
     */
@@ -390,15 +402,19 @@ Route::middleware('auth')->group(function () {
     Route::get('/bk/butuh-penanganan', [BKController::class, 'butuhPenanganan'])
         ->name('bk.butuh-penanganan');
 
-    // HALAMAN PERIZINAN BK
+
+    /*
+    |--------------------------------------------------------------------------
+    | BK - PERIZINAN
+    |--------------------------------------------------------------------------
+    */
+
     Route::get('/bk/izin', [BKController::class, 'izin'])
         ->name('bk.izin');
 
-    // SETUJUI PERIZINAN
     Route::post('/bk/izin/{id}/setujui', [BKController::class, 'setujuiIzin'])
         ->name('bk.izin.setujui');
 
-    // TOLAK PERIZINAN
     Route::post('/bk/izin/{id}/tolak', [BKController::class, 'tolakIzin'])
         ->name('bk.izin.tolak');
 

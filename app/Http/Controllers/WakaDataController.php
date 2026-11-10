@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class WakaDataController extends Controller
 {
@@ -21,20 +22,15 @@ class WakaDataController extends Controller
             abort(403, 'Anda belum login.');
         }
 
-        if (strtolower(Auth::user()->role ?? '') !== 'waka') {
+        if (strtolower(trim(Auth::user()->role ?? '')) !== 'waka') {
             abort(403, 'Akses hanya untuk Waka.');
         }
     }
-
 
     /*
     |--------------------------------------------------------------------------
     | MEMBUAT KODE LOGIN KELAS
     |--------------------------------------------------------------------------
-    |
-    | Contoh:
-    | XI RPL 1 menjadi XI-RPL-1
-    |
     */
 
     private function buatKodeKelas(string $namaKelas): string
@@ -45,7 +41,6 @@ class WakaDataController extends Controller
 
         return trim($kode, '-');
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -62,12 +57,7 @@ class WakaDataController extends Controller
             ->get();
 
         $kelas = DB::table('kelas')
-            ->leftJoin(
-                'jurusan',
-                'kelas.jurusanid',
-                '=',
-                'jurusan.id'
-            )
+            ->leftJoin('jurusan', 'kelas.jurusanid', '=', 'jurusan.id')
             ->select(
                 'kelas.*',
                 'jurusan.kodejurusan',
@@ -78,12 +68,7 @@ class WakaDataController extends Controller
             ->get();
 
         $siswa = DB::table('siswa')
-            ->leftJoin(
-                'kelas',
-                'siswa.kelasid',
-                '=',
-                'kelas.id'
-            )
+            ->leftJoin('kelas', 'siswa.kelasid', '=', 'kelas.id')
             ->select(
                 'siswa.*',
                 'kelas.namakelas',
@@ -97,12 +82,7 @@ class WakaDataController extends Controller
             ->get();
 
         $orangtua = DB::table('orangtuas')
-            ->leftJoin(
-                'siswa',
-                'orangtuas.siswaid',
-                '=',
-                'siswa.id'
-            )
+            ->leftJoin('siswa', 'orangtuas.siswaid', '=', 'siswa.id')
             ->select(
                 'orangtuas.*',
                 'siswa.nama as nama_siswa'
@@ -110,18 +90,14 @@ class WakaDataController extends Controller
             ->orderBy('orangtuas.nama')
             ->get();
 
-        return view(
-            'waka.data',
-            compact(
-                'jurusan',
-                'kelas',
-                'siswa',
-                'guru',
-                'orangtua'
-            )
-        );
+        return view('waka.data', compact(
+            'jurusan',
+            'kelas',
+            'siswa',
+            'guru',
+            'orangtua'
+        ));
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -133,23 +109,11 @@ class WakaDataController extends Controller
     {
         $this->cekAksesWaka();
 
-        $kataKunci = trim(
-            $request->input('cari', '')
-        );
+        $kataKunci = trim($request->input('cari', ''));
 
         $dataSiswa = DB::table('siswa')
-            ->leftJoin(
-                'kelas',
-                'siswa.kelasid',
-                '=',
-                'kelas.id'
-            )
-            ->leftJoin(
-                'jurusan',
-                'kelas.jurusanid',
-                '=',
-                'jurusan.id'
-            )
+            ->leftJoin('kelas', 'siswa.kelasid', '=', 'kelas.id')
+            ->leftJoin('jurusan', 'kelas.jurusanid', '=', 'jurusan.id')
             ->select(
                 'siswa.id',
                 'siswa.nisn',
@@ -163,24 +127,9 @@ class WakaDataController extends Controller
             ->get();
 
         $queryOrangtua = DB::table('orangtuas')
-            ->leftJoin(
-                'siswa',
-                'orangtuas.siswaid',
-                '=',
-                'siswa.id'
-            )
-            ->leftJoin(
-                'kelas',
-                'siswa.kelasid',
-                '=',
-                'kelas.id'
-            )
-            ->leftJoin(
-                'jurusan',
-                'kelas.jurusanid',
-                '=',
-                'jurusan.id'
-            )
+            ->leftJoin('siswa', 'orangtuas.siswaid', '=', 'siswa.id')
+            ->leftJoin('kelas', 'siswa.kelasid', '=', 'kelas.id')
+            ->leftJoin('jurusan', 'kelas.jurusanid', '=', 'jurusan.id')
             ->select(
                 'orangtuas.*',
                 'siswa.nama as namasiswa',
@@ -193,37 +142,12 @@ class WakaDataController extends Controller
 
         if ($kataKunci !== '') {
             $queryOrangtua->where(function ($query) use ($kataKunci) {
-                $query
-                    ->where(
-                        'orangtuas.nama',
-                        'like',
-                        '%' . $kataKunci . '%'
-                    )
-                    ->orWhere(
-                        'orangtuas.nomortelepon',
-                        'like',
-                        '%' . $kataKunci . '%'
-                    )
-                    ->orWhere(
-                        'siswa.nama',
-                        'like',
-                        '%' . $kataKunci . '%'
-                    )
-                    ->orWhere(
-                        'siswa.nisn',
-                        'like',
-                        '%' . $kataKunci . '%'
-                    )
-                    ->orWhere(
-                        'kelas.namakelas',
-                        'like',
-                        '%' . $kataKunci . '%'
-                    )
-                    ->orWhere(
-                        'jurusan.kodejurusan',
-                        'like',
-                        '%' . $kataKunci . '%'
-                    );
+                $query->where('orangtuas.nama', 'like', "%{$kataKunci}%")
+                    ->orWhere('orangtuas.nomortelepon', 'like', "%{$kataKunci}%")
+                    ->orWhere('siswa.nama', 'like', "%{$kataKunci}%")
+                    ->orWhere('siswa.nisn', 'like', "%{$kataKunci}%")
+                    ->orWhere('kelas.namakelas', 'like', "%{$kataKunci}%")
+                    ->orWhere('jurusan.kodejurusan', 'like', "%{$kataKunci}%");
             });
         }
 
@@ -233,21 +157,17 @@ class WakaDataController extends Controller
 
         $jumlahOrangtua = DB::table('orangtuas')->count();
 
-        return view(
-            'waka.orangtua',
-            compact(
-                'dataOrangtua',
-                'dataSiswa',
-                'jumlahOrangtua',
-                'kataKunci'
-            )
-        );
+        return view('waka.orangtua', compact(
+            'dataOrangtua',
+            'dataSiswa',
+            'jumlahOrangtua',
+            'kataKunci'
+        ));
     }
-
 
     /*
     |--------------------------------------------------------------------------
-    | SIMPAN SISWA
+    | SIMPAN SISWA + AKUN LOGIN
     |--------------------------------------------------------------------------
     */
 
@@ -258,16 +178,43 @@ class WakaDataController extends Controller
         $validated = $request->validate([
             'nisn' => 'required|string|max:50|unique:siswa,nisn',
             'nama' => 'required|string|max:255',
-            'jeniskelamin' => 'required|string|max:20',
+            'jeniskelamin' => 'required|in:L,P',
             'tanggallahir' => 'nullable|date',
             'tempatlahir' => 'nullable|string|max:100',
             'nomortelepon' => 'nullable|string|max:30',
             'alamat' => 'nullable|string',
             'kelasid' => 'required|exists:kelas,id',
+            'email' => 'nullable|email|max:255|unique:users,email',
+            'password' => 'nullable|string|min:8',
+        ], [
+            'nisn.required' => 'NISN wajib diisi.',
+            'nisn.unique' => 'NISN sudah terdaftar.',
+            'nama.required' => 'Nama siswa wajib diisi.',
+            'jeniskelamin.required' => 'Jenis kelamin wajib dipilih.',
+            'kelasid.required' => 'Kelas wajib dipilih.',
+            'kelasid.exists' => 'Kelas yang dipilih tidak ditemukan.',
+            'email.unique' => 'Email sudah digunakan akun lain.',
+            'password.min' => 'Password minimal 8 karakter.',
         ]);
 
-        DB::transaction(function () use ($validated) {
-            DB::table('siswa')->insertGetId([
+        $email = !empty($validated['email'])
+            ? trim($validated['email'])
+            : $validated['nisn'] . '@siswa.scp.local';
+
+        if (DB::table('users')->where('email', $email)->exists()) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'email' => 'Email tersebut sudah digunakan. Gunakan email lain.',
+                ]);
+        }
+
+        $password = !empty($validated['password'])
+            ? $validated['password']
+            : $validated['nisn'];
+
+        DB::transaction(function () use ($validated, $email, $password) {
+            DB::table('siswa')->insert([
                 'nisn' => $validated['nisn'],
                 'nama' => $validated['nama'],
                 'jeniskelamin' => $validated['jeniskelamin'],
@@ -282,12 +229,12 @@ class WakaDataController extends Controller
 
             DB::table('users')->insert([
                 'name' => $validated['nama'],
-                'email' => $validated['nisn'] . '@siswa.scp.local',
+                'email' => $email,
                 'nisn' => $validated['nisn'],
                 'kodepegawai' => null,
                 'role' => 'siswa',
                 'status' => 'aktif',
-                'password' => Hash::make($validated['nisn']),
+                'password' => Hash::make($password),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -295,9 +242,8 @@ class WakaDataController extends Controller
 
         return redirect()
             ->route('waka.siswa')
-            ->with('success', 'Data siswa berhasil ditambahkan.');
+            ->with('success', 'Data siswa dan akun login berhasil ditambahkan.');
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -318,12 +264,7 @@ class WakaDataController extends Controller
         }
 
         $kelas = DB::table('kelas')
-            ->leftJoin(
-                'jurusan',
-                'kelas.jurusanid',
-                '=',
-                'jurusan.id'
-            )
+            ->leftJoin('jurusan', 'kelas.jurusanid', '=', 'jurusan.id')
             ->select(
                 'kelas.*',
                 'jurusan.kodejurusan',
@@ -336,10 +277,9 @@ class WakaDataController extends Controller
         return view('waka.siswa-edit', compact('siswa', 'kelas'));
     }
 
-
     /*
     |--------------------------------------------------------------------------
-    | UPDATE SISWA
+    | UPDATE SISWA + SINKRONISASI AKUN
     |--------------------------------------------------------------------------
     */
 
@@ -356,21 +296,47 @@ class WakaDataController extends Controller
         }
 
         $validated = $request->validate([
-            'nisn' => 'required|string|max:50|unique:siswa,nisn,' . $id,
+            'nisn' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('siswa', 'nisn')->ignore($id),
+            ],
             'nama' => 'required|string|max:255',
-            'jeniskelamin' => 'required|string|max:20',
+            'jeniskelamin' => 'required|in:L,P',
             'tanggallahir' => 'nullable|date',
             'tempatlahir' => 'nullable|string|max:100',
             'nomortelepon' => 'nullable|string|max:30',
             'alamat' => 'nullable|string',
             'kelasid' => 'required|exists:kelas,id',
+        ], [
+            'nisn.required' => 'NISN wajib diisi.',
+            'nisn.unique' => 'NISN sudah digunakan siswa lain.',
+            'nama.required' => 'Nama siswa wajib diisi.',
+            'jeniskelamin.required' => 'Jenis kelamin wajib dipilih.',
+            'kelasid.required' => 'Kelas wajib dipilih.',
+            'kelasid.exists' => 'Kelas yang dipilih tidak ditemukan.',
         ]);
 
-        DB::transaction(function () use ($validated, $id, $siswa) {
+        $nisnLama = $siswa->nisn;
+        $nisnBaru = trim($validated['nisn']);
+        $emailBaru = $nisnBaru . '@siswa.scp.local';
+
+        $peringatanEmail = false;
+
+        DB::transaction(function () use (
+            $validated,
+            $id,
+            $nisnLama,
+            $nisnBaru,
+            $emailBaru,
+            &$peringatanEmail
+        ) {
+            // Update data siswa
             DB::table('siswa')
                 ->where('id', $id)
                 ->update([
-                    'nisn' => $validated['nisn'],
+                    'nisn' => $nisnBaru,
                     'nama' => $validated['nama'],
                     'jeniskelamin' => $validated['jeniskelamin'],
                     'tanggallahir' => $validated['tanggallahir'] ?? null,
@@ -381,21 +347,55 @@ class WakaDataController extends Controller
                     'updated_at' => now(),
                 ]);
 
+            // Cari akun siswa berdasarkan NISN lama dan role
+            $akun = DB::table('users')
+                ->where('nisn', $nisnLama)
+                ->where('role', 'siswa')
+                ->first();
+
+            if (!$akun) {
+                // Data siswa tetap diperbarui meskipun akun belum tersedia
+                return;
+            }
+
+            // Cek apakah email baru digunakan akun lain
+            $emailDipakai = DB::table('users')
+                ->where('email', $emailBaru)
+                ->where('id', '!=', $akun->id)
+                ->exists();
+
+            $dataUser = [
+                'name' => $validated['nama'],
+                'nisn' => $nisnBaru,
+                'updated_at' => now(),
+            ];
+
+            if (!$emailDipakai) {
+                $dataUser['email'] = $emailBaru;
+            } else {
+                // Jangan menimpa email milik akun lain
+                $peringatanEmail = true;
+            }
+
+            // Update berdasarkan ID akun, bukan NISN massal
             DB::table('users')
-                ->where('nisn', $siswa->nisn)
-                ->update([
-                    'name' => $validated['nama'],
-                    'nisn' => $validated['nisn'],
-                    'email' => $validated['nisn'] . '@siswa.scp.local',
-                    'updated_at' => now(),
-                ]);
+                ->where('id', $akun->id)
+                ->update($dataUser);
         });
 
-        return redirect()
+        $redirect = redirect()
             ->route('waka.siswa')
             ->with('success', 'Data siswa berhasil diperbarui.');
-    }
 
+        if ($peringatanEmail) {
+            $redirect->with(
+                'warning',
+                'Data siswa berhasil diperbarui, tetapi email akun tidak diubah karena email tersebut sudah digunakan akun lain.'
+            );
+        }
+
+        return $redirect;
+    }
 
     /*
     |--------------------------------------------------------------------------
@@ -428,6 +428,7 @@ class WakaDataController extends Controller
 
             DB::table('users')
                 ->where('nisn', $siswa->nisn)
+                ->where('role', 'siswa')
                 ->delete();
 
             DB::table('siswa')
@@ -440,10 +441,9 @@ class WakaDataController extends Controller
             ->with('success', 'Data siswa berhasil dihapus.');
     }
 
-
     /*
     |--------------------------------------------------------------------------
-    | SIMPAN GURU
+    | SIMPAN GURU + AKUN LOGIN
     |--------------------------------------------------------------------------
     */
 
@@ -488,7 +488,17 @@ class WakaDataController extends Controller
                 ]);
         }
 
-        DB::transaction(function () use ($validated, $nip) {
+        $emailGuru = $nip . '@guru.scp.local';
+
+        if (DB::table('users')->where('email', $emailGuru)->exists()) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'nip' => 'Email akun guru tersebut sudah digunakan.',
+                ]);
+        }
+
+        DB::transaction(function () use ($validated, $nip, $emailGuru) {
             DB::table('guru')->insert([
                 'kodeguru' => $nip,
                 'nama' => $validated['nama'],
@@ -501,7 +511,7 @@ class WakaDataController extends Controller
 
             DB::table('users')->insert([
                 'name' => $validated['nama'],
-                'email' => $nip . '@guru.scp.local',
+                'email' => $emailGuru,
                 'nisn' => null,
                 'kodepegawai' => $nip,
                 'role' => 'guru',
@@ -519,7 +529,6 @@ class WakaDataController extends Controller
                 'Data guru berhasil ditambahkan. Kode guru dan kode pegawai menggunakan NIP. Password awal akun guru adalah NIP.'
             );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -542,7 +551,6 @@ class WakaDataController extends Controller
         return view('waka.guru-edit', compact('guru'));
     }
 
-
     /*
     |--------------------------------------------------------------------------
     | UPDATE GURU
@@ -562,18 +570,56 @@ class WakaDataController extends Controller
         }
 
         $validated = $request->validate([
-            'kodeguru' => 'required|string|max:50|unique:guru,kodeguru,' . $id,
+            'kodeguru' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('guru', 'kodeguru')->ignore($id),
+            ],
             'nama' => 'required|string|max:255',
             'nip' => 'nullable|string|max:100',
             'nomortelepon' => 'nullable|string|max:30',
             'alamat' => 'nullable|string',
         ]);
 
-        DB::transaction(function () use ($validated, $guru, $id) {
+        $kodeBaru = trim($validated['kodeguru']);
+        $emailBaru = $kodeBaru . '@guru.scp.local';
+
+        $akunGuru = DB::table('users')
+            ->where('kodepegawai', $guru->kodeguru)
+            ->where('role', 'guru')
+            ->first();
+
+        $peringatanEmail = false;
+
+        if ($akunGuru) {
+            $emailDipakai = DB::table('users')
+                ->where('email', $emailBaru)
+                ->where('id', '!=', $akunGuru->id)
+                ->exists();
+
+            if ($emailDipakai) {
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'kodeguru' => 'Email akun guru sudah digunakan akun lain.',
+                    ]);
+            }
+        }
+
+        DB::transaction(function () use (
+            $validated,
+            $guru,
+            $id,
+            $kodeBaru,
+            $emailBaru,
+            $akunGuru,
+            &$peringatanEmail
+        ) {
             DB::table('guru')
                 ->where('id', $id)
                 ->update([
-                    'kodeguru' => $validated['kodeguru'],
+                    'kodeguru' => $kodeBaru,
                     'nama' => $validated['nama'],
                     'nip' => $validated['nip'] ?? null,
                     'nomortelepon' => $validated['nomortelepon'] ?? null,
@@ -581,21 +627,22 @@ class WakaDataController extends Controller
                     'updated_at' => now(),
                 ]);
 
-            DB::table('users')
-                ->where('kodepegawai', $guru->kodeguru)
-                ->update([
-                    'name' => $validated['nama'],
-                    'kodepegawai' => $validated['kodeguru'],
-                    'email' => $validated['kodeguru'] . '@guru.scp.local',
-                    'updated_at' => now(),
-                ]);
+            if ($akunGuru) {
+                DB::table('users')
+                    ->where('id', $akunGuru->id)
+                    ->update([
+                        'name' => $validated['nama'],
+                        'kodepegawai' => $kodeBaru,
+                        'email' => $emailBaru,
+                        'updated_at' => now(),
+                    ]);
+            }
         });
 
         return redirect()
             ->route('waka.guru')
             ->with('success', 'Data guru berhasil diperbarui.');
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -624,10 +671,7 @@ class WakaDataController extends Controller
         if ($adaJadwal) {
             return redirect()
                 ->route('waka.guru')
-                ->with(
-                    'error',
-                    'Guru tidak dapat dihapus karena masih memiliki jadwal mengajar.'
-                );
+                ->with('error', 'Guru tidak dapat dihapus karena masih memiliki jadwal mengajar.');
         }
 
         DB::transaction(function () use ($id, $guru) {
@@ -641,6 +685,7 @@ class WakaDataController extends Controller
 
             DB::table('users')
                 ->where('kodepegawai', $guru->kodeguru)
+                ->where('role', 'guru')
                 ->delete();
 
             DB::table('guru')
@@ -652,7 +697,6 @@ class WakaDataController extends Controller
             ->route('waka.guru')
             ->with('success', 'Data guru berhasil dihapus.');
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -681,8 +725,7 @@ class WakaDataController extends Controller
             return back()
                 ->withInput()
                 ->withErrors([
-                    'namakelas' =>
-                        'Nama kelas tersebut sudah ada pada jurusan yang dipilih.',
+                    'namakelas' => 'Nama kelas tersebut sudah ada pada jurusan yang dipilih.',
                 ]);
         }
 
@@ -696,32 +739,21 @@ class WakaDataController extends Controller
                 ]);
         }
 
-        $kodeSudahAda = DB::table('users')
-            ->where('kodekelas', $kodeKelas)
-            ->exists();
-
-        if ($kodeSudahAda) {
+        if (DB::table('users')->where('kodekelas', $kodeKelas)->exists()) {
             return back()
                 ->withInput()
                 ->withErrors([
-                    'namakelas' =>
-                        'Kode login kelas ' . $kodeKelas .
-                        ' sudah digunakan. Gunakan nama kelas yang berbeda.',
+                    'namakelas' => 'Kode login kelas ' . $kodeKelas . ' sudah digunakan.',
                 ]);
         }
 
         $emailKelas = strtolower($kodeKelas) . '@kelas.scp.local';
 
-        $emailSudahAda = DB::table('users')
-            ->where('email', $emailKelas)
-            ->exists();
-
-        if ($emailSudahAda) {
+        if (DB::table('users')->where('email', $emailKelas)->exists()) {
             return back()
                 ->withInput()
                 ->withErrors([
-                    'namakelas' =>
-                        'Email akun kelas sudah digunakan. Hubungi administrator.',
+                    'namakelas' => 'Email akun kelas sudah digunakan. Hubungi administrator.',
                 ]);
         }
 
@@ -758,11 +790,9 @@ class WakaDataController extends Controller
             ->route('waka.kelas')
             ->with(
                 'success',
-                'Data kelas dan akun login berhasil dibuat. Kode login dan password awal: ' .
-                $kodeKelas
+                'Data kelas dan akun login berhasil dibuat. Kode login dan password awal: ' . $kodeKelas
             );
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -775,12 +805,7 @@ class WakaDataController extends Controller
         $this->cekAksesWaka();
 
         $kelas = DB::table('kelas')
-            ->leftJoin(
-                'jurusan',
-                'kelas.jurusanid',
-                '=',
-                'jurusan.id'
-            )
+            ->leftJoin('jurusan', 'kelas.jurusanid', '=', 'jurusan.id')
             ->where('kelas.id', $id)
             ->select(
                 'kelas.id',
@@ -815,21 +840,9 @@ class WakaDataController extends Controller
 
         if ($kataKunci !== '') {
             $querySiswa->where(function ($q) use ($kataKunci) {
-                $q->where(
-                    'siswa.nisn',
-                    'like',
-                    '%' . $kataKunci . '%'
-                )
-                    ->orWhere(
-                        'siswa.nama',
-                        'like',
-                        '%' . $kataKunci . '%'
-                    )
-                    ->orWhere(
-                        'siswa.nomortelepon',
-                        'like',
-                        '%' . $kataKunci . '%'
-                    );
+                $q->where('siswa.nisn', 'like', "%{$kataKunci}%")
+                    ->orWhere('siswa.nama', 'like', "%{$kataKunci}%")
+                    ->orWhere('siswa.nomortelepon', 'like', "%{$kataKunci}%");
             });
         }
 
@@ -841,18 +854,14 @@ class WakaDataController extends Controller
             ->where('kelasid', $id)
             ->count();
 
-        return view(
-            'waka.kelas-edit',
-            compact(
-                'kelas',
-                'daftarJurusan',
-                'dataSiswa',
-                'jumlahSiswa',
-                'kataKunci'
-            )
-        );
+        return view('waka.kelas-edit', compact(
+            'kelas',
+            'daftarJurusan',
+            'dataSiswa',
+            'jumlahSiswa',
+            'kataKunci'
+        ));
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -909,7 +918,7 @@ class WakaDataController extends Controller
                 ]);
         }
 
-        if ($akunKelas && $kodeKelasBaru !== $akunKelas->kodekelas) {
+        if ($akunKelas) {
             $kodeSudahAda = DB::table('users')
                 ->where('kodekelas', $kodeKelasBaru)
                 ->where('id', '!=', $akunKelas->id)
@@ -961,8 +970,7 @@ class WakaDataController extends Controller
                     ->update([
                         'name' => $namaKelas,
                         'kodekelas' => $kodeKelasBaru,
-                        'email' => strtolower($kodeKelasBaru) .
-                            '@kelas.scp.local',
+                        'email' => strtolower($kodeKelasBaru) . '@kelas.scp.local',
                         'updated_at' => now(),
                     ]);
             }
@@ -972,7 +980,6 @@ class WakaDataController extends Controller
             ->route('waka.kelas.edit', $id)
             ->with('success', 'Data kelas berhasil diperbarui.');
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -994,28 +1001,18 @@ class WakaDataController extends Controller
                 ->with('error', 'Data kelas tidak ditemukan.');
         }
 
-        $adaSiswa = DB::table('siswa')
-            ->where('kelasid', $id)
-            ->exists();
-
-        if ($adaSiswa) {
-            return back()
-                ->with(
-                    'error',
-                    'Kelas tidak dapat dihapus karena masih memiliki siswa.'
-                );
+        if (DB::table('siswa')->where('kelasid', $id)->exists()) {
+            return back()->with(
+                'error',
+                'Kelas tidak dapat dihapus karena masih memiliki siswa.'
+            );
         }
 
-        $adaJadwal = DB::table('jadwal')
-            ->where('kelasid', $id)
-            ->exists();
-
-        if ($adaJadwal) {
-            return back()
-                ->with(
-                    'error',
-                    'Kelas tidak dapat dihapus karena masih memiliki jadwal.'
-                );
+        if (DB::table('jadwal')->where('kelasid', $id)->exists()) {
+            return back()->with(
+                'error',
+                'Kelas tidak dapat dihapus karena masih memiliki jadwal.'
+            );
         }
 
         DB::transaction(function () use ($id) {
@@ -1031,12 +1028,8 @@ class WakaDataController extends Controller
 
         return redirect()
             ->route('waka.kelas')
-            ->with(
-                'success',
-                'Data kelas dan akun login kelas berhasil dihapus.'
-            );
+            ->with('success', 'Data kelas dan akun login kelas berhasil dihapus.');
     }
-
 
     /*
     |--------------------------------------------------------------------------

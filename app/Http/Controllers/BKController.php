@@ -14,9 +14,12 @@ use App\Models\IzinSiswa;
 
 class BKController extends Controller
 {
-    /**
-     * MENGAMBIL DATA BK YANG SEDANG LOGIN
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | CEK AKSES BK
+    |--------------------------------------------------------------------------
+    */
+
     private function getBK()
     {
         $user = Auth::user();
@@ -25,7 +28,7 @@ class BKController extends Controller
             abort(403, 'Anda belum login.');
         }
 
-        if (strtolower($user->role ?? '') !== 'bk') {
+        if (strtolower(trim($user->role ?? '')) !== 'bk') {
             abort(403, 'Akun ini bukan akun BK.');
         }
 
@@ -41,76 +44,86 @@ class BKController extends Controller
         return $bk;
     }
 
-    /**
-     * MENGAMBIL ID KELAS TANGGUNG JAWAB BK
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | KELAS TANGGUNG JAWAB BK
+    |--------------------------------------------------------------------------
+    */
+
     private function kelasBK($bkid)
     {
         return DB::table('bk_kelas')
             ->where('bkid', $bkid)
             ->pluck('kelasid')
-            ->map(function ($id) {
-                return (int) $id;
-            })
+            ->map(fn ($id) => (int) $id)
             ->toArray();
     }
 
-    /**
-     * DASHBOARD BK
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | DASHBOARD BK
+    |--------------------------------------------------------------------------
+    */
+
     public function dashboard()
     {
         $bk = $this->getBK();
         $kelasIds = $this->kelasBK($bk->id);
+        $filterKelas = $kelasIds ?: [0];
 
         $jumlahSiswa = Siswa::whereIn(
             'kelasid',
-            $kelasIds ?: [0]
+            $filterKelas
         )->count();
 
         $jumlahPresensi = DB::table('presensi')
             ->join('siswa', 'presensi.siswaid', '=', 'siswa.id')
-            ->whereIn('siswa.kelasid', $kelasIds ?: [0])
+            ->whereIn('siswa.kelasid', $filterKelas)
             ->whereDate('presensi.waktu', now()->toDateString())
             ->count();
 
         $jumlahHadir = DB::table('presensi')
             ->join('siswa', 'presensi.siswaid', '=', 'siswa.id')
-            ->whereIn('siswa.kelasid', $kelasIds ?: [0])
+            ->whereIn('siswa.kelasid', $filterKelas)
             ->whereDate('presensi.waktu', now()->toDateString())
             ->where('presensi.status', 'hadir')
             ->count();
 
         $jumlahSakit = DB::table('presensi')
             ->join('siswa', 'presensi.siswaid', '=', 'siswa.id')
-            ->whereIn('siswa.kelasid', $kelasIds ?: [0])
+            ->whereIn('siswa.kelasid', $filterKelas)
             ->whereDate('presensi.waktu', now()->toDateString())
             ->where('presensi.status', 'sakit')
             ->count();
 
         $jumlahIzin = DB::table('presensi')
             ->join('siswa', 'presensi.siswaid', '=', 'siswa.id')
-            ->whereIn('siswa.kelasid', $kelasIds ?: [0])
+            ->whereIn('siswa.kelasid', $filterKelas)
             ->whereDate('presensi.waktu', now()->toDateString())
             ->where('presensi.status', 'izin')
             ->count();
 
         $jumlahAlpa = DB::table('presensi')
             ->join('siswa', 'presensi.siswaid', '=', 'siswa.id')
-            ->whereIn('siswa.kelasid', $kelasIds ?: [0])
+            ->whereIn('siswa.kelasid', $filterKelas)
             ->whereDate('presensi.waktu', now()->toDateString())
             ->where('presensi.status', 'alpa')
             ->count();
 
         $jumlahJurnal = DB::table('jurnal_mengajar')
-            ->join('jadwal', 'jurnal_mengajar.jadwalid', '=', 'jadwal.id')
-            ->whereIn('jadwal.kelasid', $kelasIds ?: [0])
+            ->join(
+                'jadwal',
+                'jurnal_mengajar.jadwalid',
+                '=',
+                'jadwal.id'
+            )
+            ->whereIn('jadwal.kelasid', $filterKelas)
             ->whereDate('jurnal_mengajar.tanggal', now()->toDateString())
             ->count();
 
         $kelas = Kelas::query()
             ->leftJoin('jurusan', 'kelas.jurusanid', '=', 'jurusan.id')
-            ->whereIn('kelas.id', $kelasIds ?: [0])
+            ->whereIn('kelas.id', $filterKelas)
             ->select(
                 'kelas.*',
                 'jurusan.kodejurusan',
@@ -122,39 +135,47 @@ class BKController extends Controller
 
         $dataSiswa = Siswa::query()
             ->join('kelas', 'siswa.kelasid', '=', 'kelas.id')
-            ->whereIn('siswa.kelasid', $kelasIds ?: [0])
-            ->select('siswa.*', 'kelas.namakelas')
+            ->whereIn('siswa.kelasid', $filterKelas)
+            ->select(
+                'siswa.*',
+                'kelas.namakelas'
+            )
             ->orderBy('siswa.nama')
             ->limit(10)
             ->get();
 
-        return view(
-            'bk.dashboard',
-            compact(
-                'bk',
-                'jumlahSiswa',
-                'jumlahPresensi',
-                'jumlahJurnal',
-                'jumlahHadir',
-                'jumlahSakit',
-                'jumlahIzin',
-                'jumlahAlpa',
-                'kelas',
-                'dataSiswa'
-            )
-        );
+        return view('bk.dashboard', compact(
+            'bk',
+            'jumlahSiswa',
+            'jumlahPresensi',
+            'jumlahJurnal',
+            'jumlahHadir',
+            'jumlahSakit',
+            'jumlahIzin',
+            'jumlahAlpa',
+            'kelas',
+            'dataSiswa'
+        ));
     }
 
-    /**
-     * HALAMAN KELAS TANGGUNG JAWAB
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | HALAMAN KELAS TANGGUNG JAWAB
+    |--------------------------------------------------------------------------
+    */
+
     public function kelas()
     {
         $bk = $this->getBK();
         $kelasIds = $this->kelasBK($bk->id);
 
         $semuaKelas = Kelas::query()
-            ->leftJoin('jurusan', 'kelas.jurusanid', '=', 'jurusan.id')
+            ->leftJoin(
+                'jurusan',
+                'kelas.jurusanid',
+                '=',
+                'jurusan.id'
+            )
             ->select(
                 'kelas.*',
                 'jurusan.kodejurusan',
@@ -164,54 +185,143 @@ class BKController extends Controller
             ->orderBy('kelas.namakelas')
             ->get();
 
-        $semuaKelas = $semuaKelas->map(function ($item) use ($kelasIds) {
-            $item->dipilih = in_array((int) $item->id, $kelasIds);
+        $kelasTerpakai = DB::table('bk_kelas')
+            ->where('bkid', '<>', $bk->id)
+            ->pluck('kelasid')
+            ->map(fn ($id) => (int) $id)
+            ->toArray();
+
+        $semuaKelas->transform(function ($item) use (
+            $kelasIds,
+            $kelasTerpakai
+        ) {
+            $item->dipilih = in_array(
+                (int) $item->id,
+                $kelasIds,
+                true
+            );
+
+            $item->terkunci = in_array(
+                (int) $item->id,
+                $kelasTerpakai,
+                true
+            );
+
             return $item;
         });
 
-        return view(
-            'bk.kelas',
-            compact('bk', 'semuaKelas', 'kelasIds')
-        );
+        $selectedKelas = $kelasIds;
+
+        return view('bk.kelas', compact(
+            'bk',
+            'semuaKelas',
+            'kelasIds',
+            'selectedKelas',
+            'kelasTerpakai'
+        ));
     }
 
-    /**
-     * SIMPAN KELAS TANGGUNG JAWAB BK
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | SIMPAN KELAS TANGGUNG JAWAB BK
+    |--------------------------------------------------------------------------
+    */
+
     public function simpanKelas(Request $request)
     {
         $bk = $this->getBK();
 
-        $request->validate([
-            'kelasid' => 'nullable|array',
-            'kelasid.*' => 'exists:kelas,id',
+        $validated = $request->validate([
+            'kelasid' => ['nullable', 'array'],
+            'kelasid.*' => [
+                'required',
+                'integer',
+                'distinct',
+                'exists:kelas,id'
+            ],
         ]);
 
-        DB::transaction(function () use ($request, $bk) {
-            DB::table('bk_kelas')
-                ->where('bkid', $bk->id)
-                ->delete();
+        $kelasIds = collect($validated['kelasid'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->toArray();
 
-            $kelasIds = $request->input('kelasid', []);
+        try {
+            $hasil = DB::transaction(function () use (
+                $bk,
+                $kelasIds
+            ) {
+                $kelasBentrok = DB::table('bk_kelas')
+                    ->whereIn('kelasid', $kelasIds ?: [0])
+                    ->where('bkid', '<>', $bk->id)
+                    ->lockForUpdate()
+                    ->pluck('kelasid')
+                    ->map(fn ($id) => (int) $id)
+                    ->toArray();
 
-            foreach ($kelasIds as $kelasid) {
-                DB::table('bk_kelas')->insert([
-                    'bkid' => $bk->id,
-                    'kelasid' => $kelasid,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                if (!empty($kelasBentrok)) {
+                    return [
+                        'status' => 'bentrok',
+                        'kelas' => $kelasBentrok
+                    ];
+                }
+
+                DB::table('bk_kelas')
+                    ->where('bkid', $bk->id)
+                    ->delete();
+
+                foreach ($kelasIds as $kelasid) {
+                    DB::table('bk_kelas')->insert([
+                        'bkid' => $bk->id,
+                        'kelasid' => $kelasid,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+
+                return [
+                    'status' => 'success',
+                    'kelas' => []
+                ];
+            });
+
+            if ($hasil['status'] === 'bentrok') {
+                $namaKelas = DB::table('kelas')
+                    ->whereIn('id', $hasil['kelas'])
+                    ->pluck('namakelas')
+                    ->implode(', ');
+
+                return back()
+                    ->withInput()
+                    ->with(
+                        'error',
+                        'Kelas berikut sudah menjadi tanggung jawab BK lain: '
+                        . $namaKelas
+                    );
             }
-        });
 
-        return redirect()
-            ->route('bk.kelas')
-            ->with('success', 'Kelas tanggung jawab berhasil diperbarui.');
+            return redirect()
+                ->route('bk.kelas')
+                ->with(
+                    'success',
+                    'Kelas tanggung jawab berhasil diperbarui.'
+                );
+
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with(
+                'error',
+                'Kelas gagal disimpan. Ada kemungkinan kelas sudah dipilih BK lain.'
+            );
+        }
     }
 
-    /**
-     * DATA SISWA
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | DATA SISWA
+    |--------------------------------------------------------------------------
+    */
+
     public function siswa(Request $request)
     {
         $bk = $this->getBK();
@@ -254,12 +364,19 @@ class BKController extends Controller
             ->orderBy('kodejurusan')
             ->get();
 
-        return view('bk.siswa', compact('bk', 'dataSiswa', 'jurusan'));
+        return view('bk.siswa', compact(
+            'bk',
+            'dataSiswa',
+            'jurusan'
+        ));
     }
 
-    /**
-     * DETAIL SISWA
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | DETAIL SISWA
+    |--------------------------------------------------------------------------
+    */
+
     public function detailSiswa($id)
     {
         $bk = $this->getBK();
@@ -304,21 +421,29 @@ class BKController extends Controller
             ->orderByDesc('tanggal')
             ->get();
 
-        return view(
-            'bk.siswa-detail',
-            compact('bk', 'siswa', 'presensi', 'izin')
-        );
+        return view('bk.siswa-detail', compact(
+            'bk',
+            'siswa',
+            'presensi',
+            'izin'
+        ));
     }
 
-    /**
-     * PRESENSI SISWA
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | PRESENSI SISWA
+    |--------------------------------------------------------------------------
+    */
+
     public function presensi(Request $request)
     {
         $bk = $this->getBK();
         $kelasIds = $this->kelasBK($bk->id);
 
-        $tanggal = $request->input('tanggal', now()->toDateString());
+        $tanggal = $request->input(
+            'tanggal',
+            now()->toDateString()
+        );
 
         $query = DB::table('presensi')
             ->join('siswa', 'presensi.siswaid', '=', 'siswa.id')
@@ -383,31 +508,34 @@ class BKController extends Controller
         $izin = $dataPresensi->where('status', 'izin')->count();
         $alpa = $dataPresensi->where('status', 'alpa')->count();
 
-        return view(
-            'bk.presensi',
-            compact(
-                'bk',
-                'dataPresensi',
-                'jurusan',
-                'tanggal',
-                'total',
-                'hadir',
-                'sakit',
-                'izin',
-                'alpa'
-            )
-        );
+        return view('bk.presensi', compact(
+            'bk',
+            'dataPresensi',
+            'jurusan',
+            'tanggal',
+            'total',
+            'hadir',
+            'sakit',
+            'izin',
+            'alpa'
+        ));
     }
 
-    /**
-     * BUTUH PENANGANAN
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | BUTUH PENANGANAN
+    |--------------------------------------------------------------------------
+    */
+
     public function butuhPenanganan(Request $request)
     {
         $bk = $this->getBK();
         $kelasIds = $this->kelasBK($bk->id);
 
-        $tanggal = $request->input('tanggal', now()->toDateString());
+        $tanggal = $request->input(
+            'tanggal',
+            now()->toDateString()
+        );
 
         $data = DB::table('presensi')
             ->join('siswa', 'presensi.siswaid', '=', 'siswa.id')
@@ -423,7 +551,9 @@ class BKController extends Controller
                 'kelas.namakelas',
                 'kelas.tingkat',
                 'jurusan.kodejurusan',
-                DB::raw('COUNT(DISTINCT presensi.jadwalid) as jumlah_tidak_hadir')
+                DB::raw(
+                    'COUNT(DISTINCT presensi.jadwalid) as jumlah_tidak_hadir'
+                )
             )
             ->groupBy(
                 'siswa.id',
@@ -458,12 +588,19 @@ class BKController extends Controller
                 ->get();
         }
 
-        return view('bk.butuh-penanganan', compact('bk', 'data', 'tanggal'));
+        return view('bk.butuh-penanganan', compact(
+            'bk',
+            'data',
+            'tanggal'
+        ));
     }
 
-    /**
-     * PERIZINAN SISWA
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | DATA PERIZINAN SISWA
+    |--------------------------------------------------------------------------
+    */
+
     public function izin(Request $request)
     {
         $bk = $this->getBK();
@@ -485,15 +622,24 @@ class BKController extends Controller
         }
 
         if ($request->filled('jenis')) {
-            $query->where('izin_siswa.jenis', $request->input('jenis'));
+            $query->where(
+                'izin_siswa.jenis',
+                $request->input('jenis')
+            );
         }
 
         if ($request->filled('status')) {
-            $query->where('izin_siswa.status', $request->input('status'));
+            $query->where(
+                'izin_siswa.status',
+                $request->input('status')
+            );
         }
 
         if ($request->filled('tanggal')) {
-            $query->whereDate('izin_siswa.tanggal', $request->input('tanggal'));
+            $query->whereDate(
+                'izin_siswa.tanggal',
+                $request->input('tanggal')
+            );
         }
 
         $dataIzin = $query
@@ -512,7 +658,8 @@ class BKController extends Controller
             ->orderByDesc('izin_siswa.id')
             ->get();
 
-        $adaTabelBukti = DB::getSchemaBuilder()->hasTable('izin_bukti');
+        $adaTabelBukti = DB::getSchemaBuilder()
+            ->hasTable('izin_bukti');
 
         foreach ($dataIzin as $item) {
             $item->buktiTambahan = $adaTabelBukti
@@ -524,25 +671,94 @@ class BKController extends Controller
         }
 
         $total = $dataIzin->count();
-        $jumlahIzin = $dataIzin->where('jenis', 'izin')->count();
-        $jumlahSakit = $dataIzin->where('jenis', 'sakit')->count();
 
-        return view('bk.izin', [
-            'bk' => $bk,
+        $jumlahIzin = $dataIzin
+            ->where('jenis', 'izin')
+            ->count();
+
+        $jumlahSakit = $dataIzin
+            ->where('jenis', 'sakit')
+            ->count();
+
+        return view('bk.izin', compact(
+            'bk',
+            'dataIzin',
+            'total',
+            'jumlahIzin',
+            'jumlahSakit'
+        ) + [
             'data' => $dataIzin,
-            'dataIzin' => $dataIzin,
             'kelasIds' => $kelasIds,
-            'total' => $total,
-            'jumlahIzin' => $jumlahIzin,
-            'jumlahSakit' => $jumlahSakit,
         ]);
     }
 
-    /**
-     * =========================================================
-     * MENYETUJUI IZIN SISWA
-     * =========================================================
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | PROSES KEPUTUSAN IZIN BERSAMA
+    |--------------------------------------------------------------------------
+    | BK dan Wali Kelas menggunakan kolom status yang sama.
+    | Hanya keputusan pertama yang berhasil disimpan.
+    |--------------------------------------------------------------------------
+    */
+
+    private function prosesKeputusanIzin(
+        $id,
+        array $kelasIds,
+        string $statusBaru,
+        ?string $catatan = null
+    ) {
+        return DB::transaction(function () use (
+            $id,
+            $kelasIds,
+            $statusBaru,
+            $catatan
+        ) {
+            $izin = DB::table('izin_siswa')
+                ->where('id', $id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$izin) {
+                return 'not_found';
+            }
+
+            $siswa = DB::table('siswa')
+                ->where('id', $izin->siswaid)
+                ->whereIn('kelasid', $kelasIds ?: [0])
+                ->first();
+
+            if (!$siswa) {
+                return 'not_found';
+            }
+
+            // Keputusan yang sudah ada tidak boleh diubah.
+            if (strtolower(trim($izin->status ?? '')) !== 'menunggu') {
+                return 'processed';
+            }
+
+            $updated = DB::table('izin_siswa')
+                ->where('id', $id)
+                ->where('status', 'menunggu')
+                ->update([
+                    'status' => $statusBaru,
+                    'disetujui_oleh' => Auth::id(),
+                    'waktudisetuju' => now(),
+                    'catatanbk' => $catatan,
+                    'updated_at' => now(),
+                ]);
+
+            return $updated === 1
+                ? 'success'
+                : 'processed';
+        });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | MENYETUJUI IZIN
+    |--------------------------------------------------------------------------
+    */
+
     public function setujuiIzin($id)
     {
         $bk = $this->getBK();
@@ -554,41 +770,11 @@ class BKController extends Controller
             ]);
         }
 
-        $hasil = DB::transaction(function () use ($id, $kelasIds) {
-
-            $izin = DB::table('izin_siswa')
-                ->join(
-                    'siswa',
-                    'siswa.id',
-                    '=',
-                    'izin_siswa.siswaid'
-                )
-                ->where('izin_siswa.id', $id)
-                ->whereIn('siswa.kelasid', $kelasIds)
-                ->select('izin_siswa.*')
-                ->lockForUpdate()
-                ->first();
-
-            if (!$izin) {
-                return 'not_found';
-            }
-
-            if ($izin->status !== 'menunggu') {
-                return 'processed';
-            }
-
-            $updated = DB::table('izin_siswa')
-                ->where('id', $id)
-                ->where('status', 'menunggu')
-                ->update([
-                    'status' => 'disetujui',
-                    'disetujui_oleh' => Auth::id(),
-                    'waktudisetuju' => now(),
-                    'updated_at' => now(),
-                ]);
-
-            return $updated === 1 ? 'success' : 'processed';
-        });
+        $hasil = $this->prosesKeputusanIzin(
+            $id,
+            $kelasIds,
+            'disetujui'
+        );
 
         if ($hasil === 'not_found') {
             return back()->withErrors([
@@ -598,7 +784,7 @@ class BKController extends Controller
 
         if ($hasil === 'processed') {
             return back()->withErrors([
-                'izin' => 'Pengajuan izin ini sudah diproses oleh BK atau wali kelas.'
+                'izin' => 'Pengajuan ini sudah diproses oleh BK atau Wali Kelas. Keputusan tidak dapat diubah.'
             ]);
         }
 
@@ -607,11 +793,12 @@ class BKController extends Controller
             ->with('success', 'Pengajuan izin berhasil disetujui.');
     }
 
-    /**
-     * =========================================================
-     * MENOLAK IZIN SISWA
-     * =========================================================
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | MENOLAK IZIN
+    |--------------------------------------------------------------------------
+    */
+
     public function tolakIzin(Request $request, $id)
     {
         $bk = $this->getBK();
@@ -624,49 +811,19 @@ class BKController extends Controller
         }
 
         $validated = $request->validate([
-            'catatanbk' => ['nullable', 'string', 'max:1000'],
+            'catatanbk' => [
+                'nullable',
+                'string',
+                'max:1000'
+            ],
         ]);
 
-        $hasil = DB::transaction(function () use (
+        $hasil = $this->prosesKeputusanIzin(
             $id,
             $kelasIds,
-            $validated
-        ) {
-
-            $izin = DB::table('izin_siswa')
-                ->join(
-                    'siswa',
-                    'siswa.id',
-                    '=',
-                    'izin_siswa.siswaid'
-                )
-                ->where('izin_siswa.id', $id)
-                ->whereIn('siswa.kelasid', $kelasIds)
-                ->select('izin_siswa.*')
-                ->lockForUpdate()
-                ->first();
-
-            if (!$izin) {
-                return 'not_found';
-            }
-
-            if ($izin->status !== 'menunggu') {
-                return 'processed';
-            }
-
-            $updated = DB::table('izin_siswa')
-                ->where('id', $id)
-                ->where('status', 'menunggu')
-                ->update([
-                    'status' => 'ditolak',
-                    'disetujui_oleh' => Auth::id(),
-                    'waktudisetuju' => now(),
-                    'catatanbk' => $validated['catatanbk'] ?? null,
-                    'updated_at' => now(),
-                ]);
-
-            return $updated === 1 ? 'success' : 'processed';
-        });
+            'ditolak',
+            $validated['catatanbk'] ?? null
+        );
 
         if ($hasil === 'not_found') {
             return back()->withErrors([
@@ -676,7 +833,7 @@ class BKController extends Controller
 
         if ($hasil === 'processed') {
             return back()->withErrors([
-                'izin' => 'Pengajuan izin ini sudah diproses oleh BK atau wali kelas.'
+                'izin' => 'Pengajuan ini sudah diproses oleh BK atau Wali Kelas. Keputusan tidak dapat diubah.'
             ]);
         }
 

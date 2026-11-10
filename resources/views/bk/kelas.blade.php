@@ -4,14 +4,38 @@
 
 @section('content')
 
+@php
+    $daftarKelas = $semuaKelas ?? collect();
+
+    $kelasTerpilihIds = collect(
+        $selectedKelas ?? $kelasIds ?? []
+    )->map(function ($item) {
+        if (is_object($item)) {
+            return (int) ($item->kelasid ?? $item->id ?? 0);
+        }
+
+        return (int) $item;
+    })->filter()->values()->toArray();
+
+    $kelasTerpakaiIds = collect($kelasTerpakai ?? [])
+        ->map(fn($id) => (int) $id)
+        ->toArray();
+
+    // Jangan sampai pilihan kelas yang sudah tersimpan hilang
+    // ketika halaman dikembalikan karena validasi.
+    $pilihanLama = old('kelasid');
+
+    if ($pilihanLama !== null) {
+        $kelasTerpilihIds = collect($pilihanLama)
+            ->map(fn($id) => (int) $id)
+            ->toArray();
+    }
+@endphp
+
 <style>
     .bk-kelas-page {
         width: 100%;
     }
-
-    /* =========================================================
-       HEADER
-    ========================================================= */
 
     .bk-kelas-header {
         margin-bottom: 20px;
@@ -32,10 +56,7 @@
         line-height: 1.6;
     }
 
-
-    /* =========================================================
-       ALERT
-    ========================================================= */
+    /* ALERT */
 
     .bk-alert {
         display: flex;
@@ -45,7 +66,7 @@
         margin-bottom: 15px;
         border-radius: 12px;
         font-size: 13px;
-        line-height: 1.5;
+        line-height: 1.6;
     }
 
     .bk-alert-icon {
@@ -56,7 +77,6 @@
         align-items: center;
         justify-content: center;
         border-radius: 9px;
-        margin-top: -2px;
     }
 
     .bk-alert-success {
@@ -67,7 +87,6 @@
 
     .bk-alert-success .bk-alert-icon {
         background: #d1fadf;
-        color: #087443;
     }
 
     .bk-alert-error {
@@ -78,7 +97,6 @@
 
     .bk-alert-error .bk-alert-icon {
         background: #fecdca;
-        color: #b42318;
     }
 
     .bk-alert ul {
@@ -86,10 +104,7 @@
         padding: 0;
     }
 
-
-    /* =========================================================
-       INFO
-    ========================================================= */
+    /* INFO */
 
     .bk-info {
         display: flex;
@@ -100,7 +115,6 @@
         border-radius: 14px;
         background: #eff6ff;
         border: 1px solid #dbeafe;
-        color: #175cd3;
     }
 
     .bk-info-icon {
@@ -129,13 +143,10 @@
         line-height: 1.6;
     }
 
-
-    /* =========================================================
-       CARD
-    ========================================================= */
+    /* CARD */
 
     .bk-card {
-        background: #ffffff;
+        background: #fff;
         border: 1px solid #e6ebf2;
         border-radius: 16px;
         box-shadow: 0 4px 18px rgba(15, 23, 42, .04);
@@ -144,34 +155,26 @@
     .bk-card-header {
         padding: 18px 20px;
         border-bottom: 1px solid #edf1f5;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 15px;
     }
 
-    .bk-card-header-left h3 {
+    .bk-card-header h3 {
         margin: 0;
         color: #172033;
         font-size: 16px;
         font-weight: 800;
     }
 
-    .bk-card-header-left p {
+    .bk-card-header p {
         margin: 5px 0 0;
         color: #8a94a6;
         font-size: 12px;
-        line-height: 1.5;
     }
 
     .bk-card-body {
         padding: 20px;
     }
 
-
-    /* =========================================================
-       TOOLBAR
-    ========================================================= */
+    /* TOOLBAR */
 
     .bk-toolbar {
         display: flex;
@@ -185,7 +188,6 @@
         display: block;
         color: #172033;
         font-size: 14px;
-        font-weight: 800;
     }
 
     .bk-toolbar-info span {
@@ -193,6 +195,13 @@
         margin-top: 4px;
         color: #8a94a6;
         font-size: 11px;
+    }
+
+    .bk-toolbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
     }
 
     .bk-select-all {
@@ -207,26 +216,16 @@
         font-size: 12px;
         font-weight: 700;
         cursor: pointer;
-        user-select: none;
-        white-space: nowrap;
-    }
-
-    .bk-select-all:hover {
-        background: #f1f5f9;
     }
 
     .bk-select-all input {
         width: 16px;
         height: 16px;
         margin: 0;
-        cursor: pointer;
         accent-color: #2563eb;
     }
 
-
-    /* =========================================================
-       KELAS GRID
-    ========================================================= */
+    /* GRID */
 
     .bk-kelas-grid {
         display: grid;
@@ -240,13 +239,13 @@
         padding: 18px;
         border: 1px solid #e2e8f0;
         border-radius: 15px;
-        background: #ffffff;
+        background: #fff;
         cursor: pointer;
         transition: .2s ease;
     }
 
     .bk-kelas-card:hover {
-        border-color: #bfdbfe;
+        border-color: #93c5fd;
         transform: translateY(-2px);
         box-shadow: 0 8px 22px rgba(37, 99, 235, .07);
     }
@@ -255,6 +254,23 @@
         border-color: #60a5fa;
         background: #f8fbff;
         box-shadow: 0 8px 22px rgba(37, 99, 235, .08);
+    }
+
+    /* KELAS TERKUNCI */
+
+    .bk-kelas-card.terkunci {
+        background: #f8fafc;
+        border-color: #e2e8f0;
+        cursor: not-allowed;
+        opacity: .75;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .bk-kelas-card.terkunci:hover {
+        border-color: #e2e8f0;
+        transform: none;
+        box-shadow: none;
     }
 
     .bk-kelas-check {
@@ -272,6 +288,10 @@
         accent-color: #2563eb;
     }
 
+    .bk-kelas-card.terkunci input {
+        cursor: not-allowed;
+    }
+
     .bk-kelas-icon {
         width: 46px;
         height: 46px;
@@ -283,11 +303,15 @@
         background: #eff6ff;
         color: #2563eb;
         font-size: 16px;
-        font-weight: 800;
     }
 
     .bk-kelas-card.dipilih .bk-kelas-icon {
         background: #dbeafe;
+    }
+
+    .bk-kelas-card.terkunci .bk-kelas-icon {
+        background: #e2e8f0;
+        color: #64748b;
     }
 
     .bk-kelas-name {
@@ -320,10 +344,33 @@
         background: #aab5c5;
     }
 
+    .bk-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        margin-top: 14px;
+        padding: 5px 9px;
+        border-radius: 7px;
+        font-size: 10px;
+        font-weight: 800;
+    }
 
-    /* =========================================================
-       FOOTER
-    ========================================================= */
+    .bk-status-dipilih {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .bk-status-tersedia {
+        background: #ecfdf3;
+        color: #087443;
+    }
+
+    .bk-status-terkunci {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    /* FOOTER */
 
     .bk-kelas-footer {
         display: flex;
@@ -342,7 +389,7 @@
 
     .bk-selected-count strong {
         color: #2563eb;
-        font-size: 14px;
+        font-size: 15px;
     }
 
     .bk-save-btn {
@@ -355,11 +402,11 @@
         border: 0;
         border-radius: 10px;
         background: #2563eb;
-        color: #ffffff;
+        color: white;
         font-size: 13px;
         font-weight: 700;
         cursor: pointer;
-        transition: .2s ease;
+        transition: .2s;
     }
 
     .bk-save-btn:hover {
@@ -367,10 +414,7 @@
         transform: translateY(-1px);
     }
 
-
-    /* =========================================================
-       EMPTY
-    ========================================================= */
+    /* EMPTY */
 
     .bk-empty {
         grid-column: 1 / -1;
@@ -405,11 +449,6 @@
         font-size: 12px;
     }
 
-
-    /* =========================================================
-       RESPONSIVE
-    ========================================================= */
-
     @media (max-width: 1000px) {
         .bk-kelas-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -422,8 +461,8 @@
             flex-direction: column;
         }
 
-        .bk-select-all {
-            justify-content: center;
+        .bk-toolbar-actions {
+            justify-content: flex-start;
         }
 
         .bk-kelas-grid {
@@ -455,302 +494,158 @@
 
 <div class="bk-kelas-page">
 
-    {{-- =========================================================
-         HEADER
-    ========================================================== --}}
+    {{-- HEADER --}}
 
     <div class="bk-kelas-header">
-
         <h1>Kelas Tanggung Jawab</h1>
-
         <p>
             Pilih kelas yang menjadi tanggung jawab Anda sebagai BK.
         </p>
-
     </div>
 
 
-    {{-- =========================================================
-         SUCCESS
-    ========================================================== --}}
+    {{-- SUCCESS --}}
 
     @if(session('success'))
-
         <div class="bk-alert bk-alert-success">
-
             <div class="bk-alert-icon">
                 <i class="fa-solid fa-check"></i>
             </div>
-
-            <div>
-                {{ session('success') }}
-            </div>
-
+            <div>{{ session('success') }}</div>
         </div>
-
     @endif
 
 
-    {{-- =========================================================
-         ERROR
-    ========================================================== --}}
+    {{-- ERROR --}}
 
     @if(session('error'))
-
         <div class="bk-alert bk-alert-error">
-
             <div class="bk-alert-icon">
                 <i class="fa-solid fa-xmark"></i>
             </div>
-
-            <div>
-                {{ session('error') }}
-            </div>
-
+            <div>{{ session('error') }}</div>
         </div>
-
     @endif
 
 
-    {{-- =========================================================
-         VALIDATION ERROR
-    ========================================================== --}}
+    {{-- VALIDATION ERROR --}}
 
     @if($errors->any())
-
         <div class="bk-alert bk-alert-error">
-
             <div class="bk-alert-icon">
                 <i class="fa-solid fa-triangle-exclamation"></i>
             </div>
 
             <div>
-
-                <strong>
-                    Terjadi kesalahan:
-                </strong>
-
+                <strong>Terjadi kesalahan:</strong>
                 <ul>
-
                     @foreach($errors->all() as $error)
-
-                        <li>
-                            {{ $error }}
-                        </li>
-
+                        <li>{{ $error }}</li>
                     @endforeach
-
                 </ul>
-
             </div>
-
         </div>
-
     @endif
 
 
-    {{-- =========================================================
-         INFO
-    ========================================================== --}}
+    {{-- INFO --}}
 
     <div class="bk-info">
-
         <div class="bk-info-icon">
             <i class="fa-solid fa-circle-info"></i>
         </div>
 
         <div class="bk-info-content">
-
-            <strong>
-                Pengaturan Kelas BK
-            </strong>
-
+            <strong>Pengaturan Kelas BK</strong>
             <span>
-                Kelas yang Anda pilih akan digunakan untuk membatasi
-                data siswa, presensi, perizinan, dan data lainnya
-                yang dapat Anda pantau.
+                Pilih kelas yang menjadi tanggung jawab Anda.
+                Kelas yang sudah dipilih BK lain akan terkunci
+                dan tidak dapat dipilih kembali.
             </span>
-
         </div>
-
     </div>
 
 
-    {{-- =========================================================
-         FORM
-    ========================================================== --}}
+    {{-- FORM --}}
 
-    <form
-        action="{{ route('bk.kelas.simpan') }}"
-        method="POST"
-    >
-
+    <form action="{{ route('bk.kelas.simpan') }}" method="POST">
         @csrf
-
 
         <div class="bk-card">
 
             <div class="bk-card-header">
-
-                <div class="bk-card-header-left">
-
-                    <h3>
-                        Daftar Kelas
-                    </h3>
-
-                    <p>
-                        Pilih kelas yang menjadi tanggung jawab Anda.
-                    </p>
-
-                </div>
-
+                <h3>Daftar Kelas</h3>
+                <p>
+                    Kelas tersedia dapat dipilih dan diubah kapan saja.
+                </p>
             </div>
-
 
             <div class="bk-card-body">
 
-                {{-- =================================================
-                     DATA KELAS
-                ================================================== --}}
-
-                @php
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | AMBIL DATA KELAS
-                    |--------------------------------------------------------------------------
-                    |
-                    | Controller saat ini mengirim $semuaKelas.
-                    | Fallback $kelas tetap dipertahankan agar view
-                    | tidak mudah error jika data berasal dari nama
-                    | variabel yang berbeda.
-                    |
-                    */
-
-                    $daftarKelas = $semuaKelas ?? $kelas ?? collect();
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | KELAS YANG SUDAH DIPILIH
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $kelasTerpilih =
-                        $selectedKelas
-                        ?? $kelasDipilih
-                        ?? collect();
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | UBAH MENJADI ARRAY ID
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $kelasTerpilihIds = collect($kelasTerpilih)
-                        ->map(function ($item) {
-
-                            if (is_object($item)) {
-
-                                return $item->kelasid
-                                    ?? $item->id
-                                    ?? null;
-
-                            }
-
-                            return $item;
-
-                        })
-                        ->filter()
-                        ->map(fn ($id) => (int) $id)
-                        ->values()
-                        ->toArray();
-
-                @endphp
-
+                {{-- TOOLBAR --}}
 
                 <div class="bk-toolbar">
 
                     <div class="bk-toolbar-info">
-
-                        <strong>
-                            Pilih kelas
-                        </strong>
-
+                        <strong>Pilih kelas</strong>
                         <span>
-                            Centang kelas yang menjadi tanggung jawab Anda.
+                            Kelas yang terkunci sudah menjadi tanggung jawab BK lain.
                         </span>
-
                     </div>
 
+                    <div class="bk-toolbar-actions">
 
-                    <label class="bk-select-all">
+                        <label class="bk-select-all">
+                            <input
+                                type="checkbox"
+                                id="pilihSemua"
+                            >
+                            <span>Pilih Semua yang Tersedia</span>
+                        </label>
 
-                        <input
-                            type="checkbox"
-                            id="pilihSemua"
-                        >
-
-                        <span>
-                            Pilih Semua
-                        </span>
-
-                    </label>
+                    </div>
 
                 </div>
 
 
-                {{-- =================================================
-                     GRID KELAS
-                ================================================== --}}
+                {{-- GRID KELAS --}}
 
                 <div class="bk-kelas-grid">
 
                     @forelse($daftarKelas as $item)
 
                         @php
+                            $kelasId = (int) $item->id;
 
-                            $kelasId =
-                                $item->id
-                                ?? $item->kelasid;
+                            $namaKelas = $item->namakelas ?? 'Kelas';
 
+                            $tingkat = $item->tingkat ?? '-';
 
-                            $namaKelas =
-                                $item->namakelas
-                                ?? 'Kelas';
+                            $namaJurusan = $item->namajurusan ?? '-';
 
-
-                            $tingkat =
-                                $item->tingkat
-                                ?? '-';
-
-
-                            $namaJurusan =
-                                $item->namajurusan
-                                ?? $item->jurusan_nama
-                                ?? optional($item->jurusan)->namajurusan
-                                ?? '-';
-
-
-                            $kodeJurusan =
-                                $item->kodejurusan
-                                ?? $item->jurusan_kode
-                                ?? '';
-
+                            $kodeJurusan = $item->kodejurusan ?? '';
 
                             $dipilih = in_array(
-                                (int) $kelasId,
+                                $kelasId,
                                 $kelasTerpilihIds,
                                 true
                             );
 
+                            $terkunci = in_array(
+                                $kelasId,
+                                $kelasTerpakaiIds,
+                                true
+                            );
                         @endphp
 
-
                         <label
-                            class="bk-kelas-card {{ $dipilih ? 'dipilih' : '' }}"
+                            class="
+                                bk-kelas-card
+                                {{ $dipilih ? 'dipilih' : '' }}
+                                {{ $terkunci ? 'terkunci' : '' }}
+                            "
                             data-kelas-card
+                            data-terkunci="{{ $terkunci ? '1' : '0' }}"
                         >
 
                             <div class="bk-kelas-check">
@@ -761,71 +656,81 @@
                                     value="{{ $kelasId }}"
                                     class="bk-kelas-checkbox"
                                     {{ $dipilih ? 'checked' : '' }}
+                                    {{ $terkunci ? 'disabled' : '' }}
+                                    aria-label="Pilih {{ $namaKelas }}"
                                 >
 
                             </div>
 
 
                             <div class="bk-kelas-icon">
-
                                 <i class="fa-solid fa-school"></i>
-
                             </div>
 
 
                             <div class="bk-kelas-name">
-
                                 {{ $namaKelas }}
-
                             </div>
 
 
                             <div class="bk-kelas-meta">
 
                                 <span class="bk-kelas-meta-item">
-
                                     <i class="fa-solid fa-layer-group"></i>
-
                                     Tingkat {{ $tingkat }}
-
                                 </span>
 
-
                                 @if($kodeJurusan || $namaJurusan !== '-')
-
                                     <span class="bk-kelas-dot"></span>
 
                                     <span class="bk-kelas-meta-item">
-
                                         <i class="fa-solid fa-graduation-cap"></i>
-
                                         {{ $kodeJurusan ?: $namaJurusan }}
-
                                     </span>
-
                                 @endif
 
                             </div>
 
-                        </label>
 
+                            {{-- STATUS KELAS --}}
+
+                            @if($terkunci)
+
+                                <span class="bk-status bk-status-terkunci">
+                                    <i class="fa-solid fa-lock"></i>
+                                    Sudah dipilih BK lain
+                                </span>
+
+                            @elseif($dipilih)
+
+                                <span class="bk-status bk-status-dipilih">
+                                    <i class="fa-solid fa-check-circle"></i>
+                                    Kelas Anda
+                                </span>
+
+                            @else
+
+                                <span class="bk-status bk-status-tersedia">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                    Tersedia
+                                </span>
+
+                            @endif
+
+                        </label>
 
                     @empty
 
                         <div class="bk-empty">
-
                             <div class="bk-empty-icon">
                                 <i class="fa-solid fa-school"></i>
                             </div>
 
-                            <strong>
-                                Belum ada data kelas
-                            </strong>
+                            <strong>Belum ada data kelas</strong>
 
                             <span>
                                 Data kelas belum tersedia di sistem.
                             </span>
-
                         </div>
 
                     @endforelse
@@ -833,34 +738,25 @@
                 </div>
 
 
-                {{-- =================================================
-                     FOOTER
-                ================================================== --}}
+                {{-- FOOTER --}}
 
                 @if($daftarKelas->count() > 0)
 
                     <div class="bk-kelas-footer">
 
                         <div class="bk-selected-count">
-
                             <strong id="jumlahDipilih">
                                 {{ count($kelasTerpilihIds) }}
                             </strong>
-
                             kelas dipilih
-
                         </div>
-
 
                         <button
                             type="submit"
                             class="bk-save-btn"
                         >
-
                             <i class="fa-solid fa-floppy-disk"></i>
-
                             Simpan Kelas Tanggung Jawab
-
                         </button>
 
                     </div>
@@ -868,7 +764,6 @@
                 @endif
 
             </div>
-
         </div>
 
     </form>
@@ -879,62 +774,72 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-    const pilihSemua =
-        document.getElementById('pilihSemua');
+    const pilihSemua = document.getElementById('pilihSemua');
 
-    const checkboxKelas =
-        document.querySelectorAll('.bk-kelas-checkbox');
+    const checkboxKelas = document.querySelectorAll(
+        '.bk-kelas-checkbox'
+    );
 
-    const cards =
-        document.querySelectorAll('[data-kelas-card]');
+    const cards = document.querySelectorAll(
+        '[data-kelas-card]'
+    );
 
-    const jumlahDipilih =
-        document.getElementById('jumlahDipilih');
+    const jumlahDipilih = document.getElementById(
+        'jumlahDipilih'
+    );
 
 
     /*
     |--------------------------------------------------------------------------
-    | UPDATE JUMLAH
+    | UPDATE JUMLAH KELAS
     |--------------------------------------------------------------------------
     */
 
     function updateJumlah() {
 
-        const jumlah =
-            document.querySelectorAll(
-                '.bk-kelas-checkbox:checked'
-            ).length;
-
+        const jumlah = document.querySelectorAll(
+            '.bk-kelas-checkbox:checked'
+        ).length;
 
         if (jumlahDipilih) {
             jumlahDipilih.textContent = jumlah;
         }
-
     }
 
 
     /*
     |--------------------------------------------------------------------------
-    | UPDATE CARD
+    | UPDATE TAMPILAN CARD
     |--------------------------------------------------------------------------
     */
 
     function updateCard(card, checkbox) {
 
-        if (!card || !checkbox) {
-            return;
-        }
+        if (!card || !checkbox) return;
+
+        card.classList.toggle(
+            'dipilih',
+            checkbox.checked
+        );
+
+        const status = card.querySelector('.bk-status');
+
+        if (!status) return;
 
         if (checkbox.checked) {
 
-            card.classList.add('dipilih');
+            status.className = 'bk-status bk-status-dipilih';
+
+            status.innerHTML =
+                '<i class="fa-solid fa-check-circle"></i> Kelas Anda';
 
         } else {
 
-            card.classList.remove('dipilih');
+            status.className = 'bk-status bk-status-tersedia';
 
+            status.innerHTML =
+                '<i class="fa-solid fa-circle-check"></i> Tersedia';
         }
-
     }
 
 
@@ -946,99 +851,78 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function updatePilihSemua() {
 
-        if (!pilihSemua) {
-            return;
-        }
+        if (!pilihSemua) return;
 
-        if (checkboxKelas.length === 0) {
+        const tersedia = Array.from(checkboxKelas)
+            .filter(checkbox => !checkbox.disabled);
 
-            pilihSemua.checked = false;
-
-            return;
-        }
-
-        const jumlahChecked =
-            document.querySelectorAll(
-                '.bk-kelas-checkbox:checked'
-            ).length;
-
+        const terpilih = tersedia.filter(
+            checkbox => checkbox.checked
+        );
 
         pilihSemua.checked =
-            jumlahChecked === checkboxKelas.length;
+            tersedia.length > 0 &&
+            terpilih.length === tersedia.length;
 
+        pilihSemua.indeterminate =
+            terpilih.length > 0 &&
+            terpilih.length < tersedia.length;
     }
 
 
     /*
     |--------------------------------------------------------------------------
-    | CHECKBOX KELAS
+    | PERUBAHAN CHECKBOX
     |--------------------------------------------------------------------------
     */
 
     checkboxKelas.forEach(function (checkbox) {
 
-        checkbox.addEventListener(
-            'change',
-            function () {
+        checkbox.addEventListener('change', function () {
 
-                const card =
-                    checkbox.closest('[data-kelas-card]');
+            const card = checkbox.closest('[data-kelas-card]');
 
+            updateCard(card, checkbox);
 
-                updateCard(
-                    card,
-                    checkbox
-                );
+            updateJumlah();
 
+            updatePilihSemua();
 
-                updateJumlah();
-
-                updatePilihSemua();
-
-            }
-        );
+        });
 
     });
 
 
     /*
     |--------------------------------------------------------------------------
-    | PILIH SEMUA
+    | PILIH SEMUA KELAS YANG TERSEDIA
     |--------------------------------------------------------------------------
     */
 
     if (pilihSemua) {
 
-        pilihSemua.addEventListener(
-            'change',
-            function () {
+        pilihSemua.addEventListener('change', function () {
 
-                checkboxKelas.forEach(
-                    function (checkbox) {
+            checkboxKelas.forEach(function (checkbox) {
 
-                        checkbox.checked =
-                            pilihSemua.checked;
+                // Kelas BK lain tidak boleh diubah
+                if (checkbox.disabled) return;
 
+                checkbox.checked = pilihSemua.checked;
 
-                        const card =
-                            checkbox.closest(
-                                '[data-kelas-card]'
-                            );
-
-
-                        updateCard(
-                            card,
-                            checkbox
-                        );
-
-                    }
+                const card = checkbox.closest(
+                    '[data-kelas-card]'
                 );
 
+                updateCard(card, checkbox);
 
-                updateJumlah();
+            });
 
-            }
-        );
+            updateJumlah();
+
+            updatePilihSemua();
+
+        });
 
     }
 
@@ -1051,51 +935,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
     cards.forEach(function (card) {
 
-        card.addEventListener(
-            'click',
-            function (event) {
+        card.addEventListener('click', function (event) {
 
-                /*
-                | Kalau yang diklik langsung checkbox,
-                | browser sudah menangani perubahan statusnya.
-                */
+            const checkbox = card.querySelector(
+                '.bk-kelas-checkbox'
+            );
 
-                if (
-                    event.target.closest(
-                        '.bk-kelas-check'
-                    )
-                ) {
-                    return;
-                }
+            if (!checkbox || checkbox.disabled) {
 
+                event.preventDefault();
 
-                const checkbox =
-                    card.querySelector(
-                        '.bk-kelas-checkbox'
-                    );
-
-
-                if (!checkbox) {
-                    return;
-                }
-
-
-                checkbox.checked =
-                    !checkbox.checked;
-
-
-                updateCard(
-                    card,
-                    checkbox
-                );
-
-
-                updateJumlah();
-
-                updatePilihSemua();
-
+                return;
             }
-        );
+
+            // Klik checkbox ditangani browser secara normal
+            if (event.target.closest('.bk-kelas-check')) {
+                return;
+            }
+
+            checkbox.checked = !checkbox.checked;
+
+            updateCard(card, checkbox);
+
+            updateJumlah();
+
+            updatePilihSemua();
+
+        });
 
     });
 
@@ -1106,23 +972,19 @@ document.addEventListener('DOMContentLoaded', function () {
     |--------------------------------------------------------------------------
     */
 
-    checkboxKelas.forEach(
-        function (checkbox) {
+    checkboxKelas.forEach(function (checkbox) {
 
-            const card =
-                checkbox.closest(
-                    '[data-kelas-card]'
-                );
+        const card = checkbox.closest(
+            '[data-kelas-card]'
+        );
 
-
-            updateCard(
-                card,
-                checkbox
-            );
-
+        if (checkbox.disabled) {
+            card.classList.add('terkunci');
         }
-    );
 
+        updateCard(card, checkbox);
+
+    });
 
     updateJumlah();
 

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class WakaController extends Controller
 {
@@ -131,7 +133,6 @@ class WakaController extends Controller
     {
         $this->cekAksesWaka();
 
-        // PENCARIAN GURU
         $kataKunci = trim($request->input('cari', ''));
 
         $query = DB::table('guru');
@@ -144,46 +145,30 @@ class WakaController extends Controller
             });
         }
 
-        // DATA GURU DENGAN PAGINATION
         $dataGuru = $query
             ->orderBy('nama')
             ->paginate(10)
             ->withQueryString();
 
-        // DAFTAR MAPEL MASING-MASING GURU
         foreach ($dataGuru as $guru) {
             $guru->daftar_mapel = DB::table('guru_mapel')
-                ->join(
-                    'mapel',
-                    'guru_mapel.mapelid',
-                    '=',
-                    'mapel.id'
-                )
+                ->join('mapel', 'guru_mapel.mapelid', '=', 'mapel.id')
                 ->where('guru_mapel.guruid', $guru->id)
                 ->pluck('mapel.namamapel');
         }
 
-        // STATISTIK SELURUH GURU
         $totalGuru = DB::table('guru')->count();
 
-        // GURU YANG SUDAH MEMILIKI MAPEL
         $guruDenganMapel = DB::table('guru_mapel')
-            ->join('guru', 'guru_mapel.guruid', '=', 'guru.id')
-            ->join('mapel', 'guru_mapel.mapelid', '=', 'mapel.id')
-            ->distinct('guru_mapel.guruid')
-            ->count('guru_mapel.guruid');
+            ->distinct()
+            ->count('guruid');
 
-        // GURU YANG BELUM MEMILIKI MAPEL
         $guruTanpaMapel = max(0, $totalGuru - $guruDenganMapel);
 
-        // TOTAL MAPEL YANG MEMILIKI GURU
         $totalMapelDiampu = DB::table('guru_mapel')
-            ->join('guru', 'guru_mapel.guruid', '=', 'guru.id')
-            ->join('mapel', 'guru_mapel.mapelid', '=', 'mapel.id')
-            ->distinct('mapel.id')
-            ->count('mapel.id');
+            ->distinct()
+            ->count('mapelid');
 
-        // SEBARAN GURU BERDASARKAN MAPEL
         $sebaranMapel = DB::table('guru_mapel')
             ->join('guru', 'guru_mapel.guruid', '=', 'guru.id')
             ->join('mapel', 'guru_mapel.mapelid', '=', 'mapel.id')
@@ -218,9 +203,11 @@ class WakaController extends Controller
     {
         $this->cekAksesWaka();
 
+        $search = trim($request->input('search', ''));
+
         $query = DB::table('siswa')
-            ->leftJoin('kelas', 'siswa.idkelas', '=', 'kelas.id')
-            ->leftJoin('jurusan', 'kelas.idjurusan', '=', 'jurusan.id')
+            ->leftJoin('kelas', 'siswa.kelasid', '=', 'kelas.id')
+            ->leftJoin('jurusan', 'kelas.jurusanid', '=', 'jurusan.id')
             ->select(
                 'siswa.*',
                 'kelas.namakelas',
@@ -228,9 +215,7 @@ class WakaController extends Controller
                 'jurusan.namajurusan'
             );
 
-        if ($request->filled('search')) {
-            $search = trim($request->search);
-
+        if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('siswa.nama', 'like', "%{$search}%")
                     ->orWhere('siswa.nisn', 'like', "%{$search}%")
@@ -243,7 +228,146 @@ class WakaController extends Controller
             ->orderBy('siswa.nama')
             ->get();
 
-        return view('waka.siswa', compact('dataSiswa'));
+        $jumlahSiswa = DB::table('siswa')->count();
+
+        $daftarKelas = DB::table('kelas')
+            ->leftJoin('jurusan', 'kelas.jurusanid', '=', 'jurusan.id')
+            ->select(
+                'kelas.id',
+                'kelas.namakelas',
+                'kelas.tingkat',
+                'jurusan.namajurusan'
+            )
+            ->orderBy('kelas.tingkat')
+            ->orderBy('jurusan.namajurusan')
+            ->orderBy('kelas.namakelas')
+            ->get();
+
+        return view('waka.siswa', compact(
+            'dataSiswa',
+            'jumlahSiswa',
+            'daftarKelas',
+            'search'
+        ));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | TAMBAH SISWA + AKUN LOGIN
+    |--------------------------------------------------------------------------
+    */
+
+    public function simpanSiswa(Request $request)
+    {
+        $this->cekAksesWaka();
+
+        $request->validate([
+            'nisn' => [
+                'required',
+                'string',
+                'max:20',
+                Rule::unique('siswa', 'nisn'),
+            ],
+            'nama' => ['required', 'string', 'max:100'],
+            'jeniskelamin' => ['required', Rule::in(['L', 'P'])],
+            'tempatlahir' => ['nullable', 'string', 'max:100'],
+            'tanggallahir' => ['nullable', 'date'],
+            'alamat' => ['nullable', 'string'],
+            'nomortelepon' => ['nullable', 'string', 'max:20'],
+            'kelasid' => ['required', 'integer', 'exists:kelas,id'],
+            'email' => ['nullable', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['nullable', 'string', 'min:8'],
+        ], [
+            'nisn.required' => 'NISN wajib diisi.',
+            'nisn.unique' => 'NISN sudah terdaftar.',
+            'nama.required' => 'Nama siswa wajib diisi.',
+            'jeniskelamin.required' => 'Jenis kelamin wajib dipilih.',
+            'kelasid.required' => 'Kelas wajib dipilih.',
+            'kelasid.exists' => 'Kelas yang dipilih tidak ditemukan.',
+            'email.unique' => 'Email sudah digunakan akun lain.',
+            'password.min' => 'Password minimal 8 karakter.',
+        ]);
+
+        $nisn = trim($request->nisn);
+
+        if (
+            DB::table('users')
+                ->where('nisn', $nisn)
+                ->where('role', 'siswa')
+                ->exists()
+        ) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'nisn' => 'Akun dengan NISN tersebut sudah tersedia.'
+                ]);
+        }
+
+        $kelas = DB::table('kelas')
+            ->where('id', $request->kelasid)
+            ->first();
+
+        if (!$kelas) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'kelasid' => 'Kelas tidak ditemukan.'
+                ]);
+        }
+
+        $email = $request->filled('email')
+            ? trim($request->email)
+            : $nisn . '@siswa.scp.local';
+
+        if (DB::table('users')->where('email', $email)->exists()) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'email' => 'Email akun siswa sudah digunakan.'
+                ]);
+        }
+
+        $password = $request->filled('password')
+            ? $request->password
+            : $nisn;
+
+        DB::transaction(function () use (
+            $request,
+            $nisn,
+            $email,
+            $password
+        ) {
+            DB::table('siswa')->insert([
+                'nisn' => $nisn,
+                'nama' => trim($request->nama),
+                'jeniskelamin' => $request->jeniskelamin,
+                'tempatlahir' => $request->tempatlahir,
+                'tanggallahir' => $request->tanggallahir,
+                'alamat' => $request->alamat,
+                'nomortelepon' => $request->nomortelepon,
+                'kelasid' => $request->kelasid,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DB::table('users')->insert([
+                'name' => trim($request->nama),
+                'email' => $email,
+                'nisn' => $nisn,
+                'password' => Hash::make($password),
+                'role' => 'siswa',
+                'status' => 'aktif',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
+
+        return redirect()
+            ->route('waka.siswa')
+            ->with(
+                'success',
+                'Data siswa dan akun login berhasil ditambahkan. Password awal: ' . $password
+            );
     }
 
     /*
@@ -256,7 +380,21 @@ class WakaController extends Controller
     {
         $this->cekAksesWaka();
 
-        return view('waka.kelas');
+        $jumlahKelas = DB::table('kelas')->count();
+        $jumlahSiswa = DB::table('siswa')->count();
+
+        $daftarAngkatan = DB::table('kelas')
+            ->select('tingkat')
+            ->whereNotNull('tingkat')
+            ->distinct()
+            ->orderBy('tingkat')
+            ->get();
+
+        return view('waka.kelas', compact(
+            'jumlahKelas',
+            'jumlahSiswa',
+            'daftarAngkatan'
+        ));
     }
 
     /*
@@ -269,22 +407,38 @@ class WakaController extends Controller
     {
         $this->cekAksesWaka();
 
-        if (!in_array((int) $tingkat, [10, 11, 12])) {
+        $tingkat = (int) $tingkat;
+
+        if (!in_array($tingkat, [10, 11, 12])) {
             abort(404);
         }
 
-        $dataJurusan = DB::table('jurusan')
-            ->leftJoin('kelas', 'jurusan.id', '=', 'kelas.idjurusan')
+        $daftarJurusan = DB::table('jurusan')
+            ->leftJoin('kelas', function ($join) use ($tingkat) {
+                $join->on('jurusan.id', '=', 'kelas.jurusanid')
+                    ->where('kelas.tingkat', '=', $tingkat);
+            })
             ->select(
-                'jurusan.*',
-                DB::raw('COUNT(kelas.id) as total_kelas')
+                'jurusan.id',
+                'jurusan.kodejurusan',
+                'jurusan.namajurusan',
+
+                // Harus sama dengan properti yang dipanggil Blade.
+                DB::raw('COUNT(kelas.id) as jumlah_kelas')
             )
-            ->where('kelas.tingkat', $tingkat)
-            ->groupBy('jurusan.id')
-            ->orderBy('jurusan.namajurusan')
+            ->groupBy(
+                'jurusan.id',
+                'jurusan.kodejurusan',
+                'jurusan.namajurusan'
+            )
+            ->orderBy('jurusan.namajurusan', 'asc')
             ->get();
 
+        // Alias untuk kompatibilitas dengan Blade lama.
+        $dataJurusan = $daftarJurusan;
+
         return view('waka.kelas-angkatan', compact(
+            'daftarJurusan',
             'dataJurusan',
             'tingkat'
         ));
@@ -300,7 +454,9 @@ class WakaController extends Controller
     {
         $this->cekAksesWaka();
 
-        if (!in_array((int) $tingkat, [10, 11, 12])) {
+        $tingkat = (int) $tingkat;
+
+        if (!in_array($tingkat, [10, 11, 12])) {
             abort(404);
         }
 
@@ -314,13 +470,13 @@ class WakaController extends Controller
 
         $dataKelas = DB::table('kelas')
             ->where('tingkat', $tingkat)
-            ->where('idjurusan', $jurusanId)
+            ->where('jurusanid', $jurusanId)
             ->orderBy('namakelas')
             ->get();
 
         foreach ($dataKelas as $kelas) {
             $kelas->total_siswa = DB::table('siswa')
-                ->where('idkelas', $kelas->id)
+                ->where('kelasid', $kelas->id)
                 ->count();
         }
 
@@ -342,7 +498,7 @@ class WakaController extends Controller
         $this->cekAksesWaka();
 
         $kelas = DB::table('kelas')
-            ->leftJoin('jurusan', 'kelas.idjurusan', '=', 'jurusan.id')
+            ->leftJoin('jurusan', 'kelas.jurusanid', '=', 'jurusan.id')
             ->select(
                 'kelas.*',
                 'jurusan.namajurusan'
@@ -355,7 +511,7 @@ class WakaController extends Controller
         }
 
         $query = DB::table('siswa')
-            ->where('idkelas', $id);
+            ->where('kelasid', $id);
 
         if ($request->filled('search')) {
             $search = trim($request->search);
@@ -399,7 +555,6 @@ class WakaController extends Controller
                 'guru.kodeguru'
             );
 
-        // PENCARIAN NAMA GURU DAN ISI JURNAL
         if ($request->filled('search')) {
             $search = trim($request->search);
 
@@ -411,7 +566,6 @@ class WakaController extends Controller
             });
         }
 
-        // FILTER TANGGAL
         if ($request->filled('tanggal')) {
             $query->whereDate(
                 'jurnal_mengajar.tanggal',
@@ -419,7 +573,6 @@ class WakaController extends Controller
             );
         }
 
-        // PAGINATION 10 DATA TERBARU
         $dataJurnal = $query
             ->orderByDesc('jurnal_mengajar.tanggal')
             ->orderByDesc('jurnal_mengajar.id')

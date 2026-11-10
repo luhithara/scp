@@ -47,6 +47,15 @@
 
             <button
                 type="button"
+                class="btn btn-import"
+                onclick="bukaModalImportGuru()"
+            >
+                <i class="fa-solid fa-file-import"></i>
+                Import Data
+            </button>
+
+            <button
+                type="button"
                 class="btn btn-primary"
                 onclick="bukaModalGuru()"
             >
@@ -74,6 +83,29 @@
         <div class="alert alert-danger">
             <i class="fa-solid fa-circle-exclamation"></i>
             <span>{{ session('error') }}</span>
+        </div>
+    @endif
+
+    @if(session('warning'))
+        <div class="alert alert-warning">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <div>{{ session('warning') }}</div>
+        </div>
+    @endif
+
+    @if(session('import_errors'))
+        <div class="alert alert-danger">
+            <i class="fa-solid fa-circle-exclamation"></i>
+
+            <div>
+                <strong>Beberapa data gagal diimpor:</strong>
+
+                <ul class="error-list">
+                    @foreach(session('import_errors') as $importError)
+                        <li>{{ $importError }}</li>
+                    @endforeach
+                </ul>
+            </div>
         </div>
     @endif
 
@@ -118,7 +150,6 @@
             </div>
         </div>
 
-
         <div class="stat-card">
             <div class="stat-card-top">
                 <div>
@@ -137,7 +168,6 @@
             </div>
         </div>
 
-
         <div class="stat-card">
             <div class="stat-card-top">
                 <div>
@@ -155,7 +185,6 @@
                 </div>
             </div>
         </div>
-
 
         <div class="stat-card">
             <div class="stat-card-top">
@@ -446,7 +475,6 @@
 
                 </div>
 
-
                 {{-- PAGINATION --}}
 
                 @if(method_exists($dataGuru, 'links'))
@@ -540,7 +568,6 @@
 
             </div>
 
-
             <form
                 action="{{ route('waka.guru.simpan') }}"
                 method="POST"
@@ -572,7 +599,6 @@
 
                     </div>
 
-
                     <div class="form-group">
 
                         <label for="nipGuru">NIP</label>
@@ -593,7 +619,6 @@
                         </small>
 
                     </div>
-
 
                     <div class="account-info">
 
@@ -626,7 +651,6 @@
 
                 </div>
 
-
                 <div class="modal-footer">
 
                     <button
@@ -640,6 +664,146 @@
                     <button type="submit" class="btn btn-primary">
                         <i class="fa-solid fa-floppy-disk"></i>
                         Simpan Guru
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    {{-- =====================================================
+         MODAL IMPORT GURU
+    ====================================================== --}}
+
+    <div
+        id="modalImportGuru"
+        class="modal-overlay"
+        aria-hidden="true"
+    >
+
+        <div
+            class="modal-card import-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="judulModalImportGuru"
+        >
+
+            <div class="modal-header">
+
+                <div>
+                    <h2 id="judulModalImportGuru">Import Data Guru</h2>
+                    <p>
+                        Masukkan data guru melalui file Excel, CSV, atau PDF.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    class="modal-close"
+                    onclick="tutupModalImportGuru()"
+                    aria-label="Tutup"
+                >
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+
+            </div>
+
+            <form
+                action="{{ route('waka.data.import', ['jenis' => 'guru']) }}"
+                method="POST"
+                enctype="multipart/form-data"
+            >
+
+                @csrf
+
+                <div class="modal-body">
+
+                    <div class="import-information">
+                        <i class="fa-solid fa-circle-info"></i>
+
+                        <div>
+                            <strong>Format file yang didukung</strong>
+                            <p>
+                                Excel (.xlsx, .xls), CSV (.csv), dan PDF (.pdf).
+                                Ukuran maksimal file 10 MB.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="import-format-list">
+
+                        <div>
+                            <i class="fa-solid fa-file-excel"></i>
+                            <span>Excel</span>
+                            <small>.xlsx / .xls</small>
+                        </div>
+
+                        <div>
+                            <i class="fa-solid fa-file-csv"></i>
+                            <span>CSV</span>
+                            <small>.csv</small>
+                        </div>
+
+                        <div>
+                            <i class="fa-solid fa-file-pdf"></i>
+                            <span>PDF</span>
+                            <small>.pdf</small>
+                        </div>
+
+                    </div>
+
+                    <div class="form-group">
+
+                        <label for="fileImportGuru">
+                            Pilih File Data Guru
+                        </label>
+
+                        <input
+                            type="file"
+                            id="fileImportGuru"
+                            name="file"
+                            accept=".xlsx,.xls,.csv,.pdf"
+                            required
+                        >
+
+                        <small id="namaFileGuru">
+                            Belum ada file yang dipilih.
+                        </small>
+
+                    </div>
+
+                    <div class="import-warning">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+
+                        <p>
+                            Pastikan file memiliki kolom kode guru atau NIP
+                            dan nama guru. File PDF harus berisi teks atau
+                            tabel yang dapat dibaca, bukan hanya gambar hasil scan.
+                        </p>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        onclick="tutupModalImportGuru()"
+                    >
+                        Batal
+                    </button>
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                    >
+                        <i class="fa-solid fa-file-import"></i>
+                        Import Sekarang
                     </button>
 
                 </div>
@@ -697,6 +861,7 @@
     display:flex;
     align-items:center;
     gap:10px;
+    flex-wrap:wrap;
 }
 
 /* BUTTON */
@@ -741,6 +906,16 @@
     background:#e2e8f0;
 }
 
+.btn-import {
+    background:#ecfdf5;
+    color:#047857;
+    border:1px solid #a7f3d0;
+}
+
+.btn-import:hover {
+    background:#d1fae5;
+}
+
 /* ALERT */
 
 .alert {
@@ -765,9 +940,19 @@
     border:1px solid #fecaca;
 }
 
+.alert-warning {
+    background:#fffbeb;
+    color:#92400e;
+    border:1px solid #fde68a;
+}
+
 .error-list {
     margin:8px 0 0 18px;
     padding:0;
+}
+
+.error-list li {
+    margin-bottom:4px;
 }
 
 /* STATISTIK */
@@ -1315,6 +1500,10 @@
     box-shadow:0 25px 60px rgba(15,23,42,.20);
 }
 
+.import-modal {
+    max-width:550px;
+}
+
 .modal-header {
     display:flex;
     align-items:flex-start;
@@ -1439,6 +1628,100 @@
     border-top:1px solid #edf2f7;
 }
 
+/* IMPORT */
+
+.import-information {
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    padding:14px;
+    margin-bottom:18px;
+    background:#eff6ff;
+    border:1px solid #dbeafe;
+    border-radius:12px;
+    color:#2563eb;
+}
+
+.import-information > i {
+    margin-top:2px;
+    font-size:19px;
+}
+
+.import-information strong {
+    display:block;
+    font-size:13px;
+}
+
+.import-information p {
+    margin:5px 0 0;
+    color:#64748b;
+    font-size:12px;
+    line-height:1.6;
+}
+
+.import-format-list {
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-bottom:20px;
+}
+
+.import-format-list > div {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+    padding:15px 8px;
+    background:#f8fafc;
+    border:1px solid #e2e8f0;
+    border-radius:11px;
+}
+
+.import-format-list i {
+    font-size:25px;
+    color:#2563eb;
+}
+
+.import-format-list span {
+    color:#334155;
+    font-size:13px;
+    font-weight:700;
+}
+
+.import-format-list small {
+    color:#94a3b8;
+    font-size:11px;
+}
+
+#fileImportGuru {
+    height:auto;
+    min-height:45px;
+    padding:10px;
+    background:#f8fafc;
+}
+
+.import-warning {
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    padding:12px;
+    background:#fff7ed;
+    border:1px solid #fed7aa;
+    border-radius:10px;
+}
+
+.import-warning i {
+    color:#ea580c;
+    margin-top:2px;
+}
+
+.import-warning p {
+    margin:0;
+    color:#9a3412;
+    font-size:12px;
+    line-height:1.6;
+}
+
 /* RESPONSIVE */
 
 @media(max-width:1100px) {
@@ -1490,6 +1773,10 @@
     .pagination-wrapper nav {
         align-items:flex-start;
     }
+
+    .import-format-list {
+        grid-template-columns:repeat(3,minmax(0,1fr));
+    }
 }
 
 </style>
@@ -1504,6 +1791,10 @@
 @push('scripts')
 
 <script>
+
+/* =========================================================
+   MODAL TAMBAH GURU
+========================================================= */
 
 function bukaModalGuru()
 {
@@ -1547,35 +1838,101 @@ function konfirmasiHapusGuru()
 }
 
 
-/* KLIK AREA LUAR MODAL */
+/* =========================================================
+   MODAL IMPORT GURU
+========================================================= */
 
-document.addEventListener('click', function(event) {
-
-    const modal = document.getElementById('modalGuru');
+function bukaModalImportGuru()
+{
+    const modal = document.getElementById('modalImportGuru');
 
     if (!modal) {
         return;
     }
 
-    if (event.target === modal) {
-        tutupModalGuru();
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+
+function tutupModalImportGuru()
+{
+    const modal = document.getElementById('modalImportGuru');
+
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+
+/* =========================================================
+   TAMPILKAN NAMA FILE
+========================================================= */
+
+document.addEventListener('DOMContentLoaded', function() {
+
+    const inputFile = document.getElementById('fileImportGuru');
+    const namaFile = document.getElementById('namaFileGuru');
+
+    if (inputFile && namaFile) {
+
+        inputFile.addEventListener('change', function() {
+
+            if (this.files && this.files.length > 0) {
+                namaFile.textContent =
+                    'File dipilih: ' + this.files[0].name;
+            } else {
+                namaFile.textContent =
+                    'Belum ada file yang dipilih.';
+            }
+
+        });
+
     }
 
 });
 
 
-/* TOMBOL ESC */
+/* =========================================================
+   KLIK AREA LUAR MODAL
+========================================================= */
+
+document.addEventListener('click', function(event) {
+
+    const modalGuru = document.getElementById('modalGuru');
+    const modalImport = document.getElementById('modalImportGuru');
+
+    if (modalGuru && event.target === modalGuru) {
+        tutupModalGuru();
+    }
+
+    if (modalImport && event.target === modalImport) {
+        tutupModalImportGuru();
+    }
+
+});
+
+
+/* =========================================================
+   TOMBOL ESC
+========================================================= */
 
 document.addEventListener('keydown', function(event) {
 
     if (event.key === 'Escape') {
         tutupModalGuru();
+        tutupModalImportGuru();
     }
 
 });
 
 
-/* BUKA MODAL JIKA VALIDASI GAGAL */
+/* =========================================================
+   BUKA MODAL TAMBAH JIKA VALIDASI GAGAL
+========================================================= */
 
 @if($errors->any())
 

@@ -10,15 +10,16 @@ use App\Models\Kelas;
 class KelasAkunController extends Controller
 {
     /**
-     * Dashboard akun kelas.
+     * Validasi akun wali kelas.
      */
-    public function dashboard(Request $request)
+    private function getKelasUser()
     {
         $user = Auth::user();
 
         abort_unless(
-            $user && strtolower($user->role ?? '') === 'kelas',
-            403
+            $user && strtolower(trim($user->role ?? '')) === 'kelas',
+            403,
+            'Akses hanya untuk akun wali kelas.'
         );
 
         abort_unless(
@@ -26,6 +27,16 @@ class KelasAkunController extends Controller
             403,
             'Akun belum terhubung dengan kelas.'
         );
+
+        return $user;
+    }
+
+    /**
+     * Dashboard akun kelas.
+     */
+    public function dashboard(Request $request)
+    {
+        $user = $this->getKelasUser();
 
         $kelas = Kelas::findOrFail($user->kelasid);
 
@@ -47,6 +58,7 @@ class KelasAkunController extends Controller
         | DAFTAR SISWA
         |--------------------------------------------------------------------------
         */
+
         $querySiswa = DB::table('siswa')
             ->where('siswa.kelasid', $kelas->id);
 
@@ -73,9 +85,10 @@ class KelasAkunController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | DETAIL ABSENSI SISWA YANG DIPILIH
+        | DETAIL ABSENSI SISWA
         |--------------------------------------------------------------------------
         */
+
         $siswaDipilih = null;
         $absensiSiswa = collect();
         $izinSiswa = collect();
@@ -89,6 +102,7 @@ class KelasAkunController extends Controller
         ];
 
         if ($request->filled('siswa_id')) {
+
             $siswaDipilih = DB::table('siswa')
                 ->where('id', $request->integer('siswa_id'))
                 ->where('kelasid', $kelas->id)
@@ -134,6 +148,7 @@ class KelasAkunController extends Controller
                 ->get();
 
             foreach ($absensiSiswa as $absensi) {
+
                 $status = strtolower(
                     trim((string) $absensi->status)
                 );
@@ -185,6 +200,7 @@ class KelasAkunController extends Controller
         | DATA PRESENSI SEMUA SISWA
         |--------------------------------------------------------------------------
         */
+
         $queryPresensi = DB::table('presensi')
             ->join('siswa', 'siswa.id', '=', 'presensi.siswaid')
             ->join('jadwal', 'jadwal.id', '=', 'presensi.jadwalid')
@@ -228,6 +244,7 @@ class KelasAkunController extends Controller
         ];
 
         foreach ($daftarPresensi as $presensi) {
+
             $status = strtolower(trim((string) $presensi->status));
 
             if (in_array($status, ['hadir', 'h', 'present'], true)) {
@@ -252,6 +269,7 @@ class KelasAkunController extends Controller
         | DATA PERIZINAN KELAS
         |--------------------------------------------------------------------------
         */
+
         $queryIzin = DB::table('izin_siswa')
             ->join('siswa', 'siswa.id', '=', 'izin_siswa.siswaid')
             ->where('siswa.kelasid', $kelas->id);
@@ -284,6 +302,7 @@ class KelasAkunController extends Controller
                 'izin_siswa.jadwalid',
                 'izin_siswa.waktudisetuju',
                 'izin_siswa.catatanbk',
+                'izin_siswa.disetujui_oleh',
                 'siswa.nama as namasiswa',
                 'siswa.nisn'
             )
@@ -298,6 +317,7 @@ class KelasAkunController extends Controller
         | JADWAL KELAS
         |--------------------------------------------------------------------------
         */
+
         $daftarJadwal = DB::table('jadwal')
             ->leftJoin('guru', 'guru.id', '=', 'jadwal.guruid')
             ->leftJoin('ruangan', 'ruangan.id', '=', 'jadwal.ruanganid')
@@ -336,6 +356,7 @@ class KelasAkunController extends Controller
         | REKAP STATUS IZIN
         |--------------------------------------------------------------------------
         */
+
         $rekapIzin = [
             'menunggu' => 0,
             'disetujui' => 0,
@@ -344,6 +365,7 @@ class KelasAkunController extends Controller
         ];
 
         foreach ($daftarIzin as $izin) {
+
             $status = strtolower(trim((string) $izin->status));
 
             if (in_array(
@@ -391,29 +413,20 @@ class KelasAkunController extends Controller
         ));
     }
 
-    /**
-     * Menyetujui pengajuan izin.
-     * Hanya dapat dilakukan oleh wali kelas siswa tersebut.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | MENYETUJUI IZIN
+    |--------------------------------------------------------------------------
+    */
+
     public function setujuiIzin($id)
     {
-        $user = Auth::user();
-
-        abort_unless(
-            $user &&
-            strtolower($user->role ?? '') === 'kelas' &&
-            $user->kelasid,
-            403
-        );
+        $user = $this->getKelasUser();
 
         $hasil = DB::transaction(function () use ($id, $user) {
+
             $izin = DB::table('izin_siswa')
-                ->join(
-                    'siswa',
-                    'siswa.id',
-                    '=',
-                    'izin_siswa.siswaid'
-                )
+                ->join('siswa', 'siswa.id', '=', 'izin_siswa.siswaid')
                 ->where('izin_siswa.id', $id)
                 ->where('siswa.kelasid', $user->kelasid)
                 ->select('izin_siswa.*')
@@ -424,13 +437,13 @@ class KelasAkunController extends Controller
                 return 'not_found';
             }
 
-            if ($izin->status !== 'menunggu') {
+            if (strtolower(trim($izin->status ?? '')) !== 'menunggu') {
                 return 'processed';
             }
 
             $updated = DB::table('izin_siswa')
                 ->where('id', $id)
-                ->where('status', 'menunggu')
+                ->where('status', $izin->status)
                 ->update([
                     'status' => 'disetujui',
                     'disetujui_oleh' => $user->id,
@@ -442,15 +455,11 @@ class KelasAkunController extends Controller
         });
 
         if ($hasil === 'not_found') {
-            return back()->withErrors([
-                'izin' => 'Pengajuan izin tidak ditemukan di kelas Anda.'
-            ]);
+            return back()->with('error', 'Pengajuan izin tidak ditemukan di kelas Anda.');
         }
 
         if ($hasil === 'processed') {
-            return back()->withErrors([
-                'izin' => 'Pengajuan izin ini sudah diproses oleh BK atau wali kelas.'
-            ]);
+            return back()->with('error', 'Pengajuan izin sudah diproses oleh BK atau Wali Kelas.');
         }
 
         return redirect()
@@ -458,33 +467,24 @@ class KelasAkunController extends Controller
             ->with('success', 'Pengajuan izin berhasil disetujui.');
     }
 
-    /**
-     * Menolak pengajuan izin.
-     * Hanya dapat dilakukan oleh wali kelas siswa tersebut.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | MENOLAK IZIN
+    |--------------------------------------------------------------------------
+    */
+
     public function tolakIzin(Request $request, $id)
     {
-        $user = Auth::user();
-
-        abort_unless(
-            $user &&
-            strtolower($user->role ?? '') === 'kelas' &&
-            $user->kelasid,
-            403
-        );
+        $user = $this->getKelasUser();
 
         $validated = $request->validate([
             'catatanbk' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $hasil = DB::transaction(function () use ($id, $user, $validated) {
+
             $izin = DB::table('izin_siswa')
-                ->join(
-                    'siswa',
-                    'siswa.id',
-                    '=',
-                    'izin_siswa.siswaid'
-                )
+                ->join('siswa', 'siswa.id', '=', 'izin_siswa.siswaid')
                 ->where('izin_siswa.id', $id)
                 ->where('siswa.kelasid', $user->kelasid)
                 ->select('izin_siswa.*')
@@ -495,13 +495,13 @@ class KelasAkunController extends Controller
                 return 'not_found';
             }
 
-            if ($izin->status !== 'menunggu') {
+            if (strtolower(trim($izin->status ?? '')) !== 'menunggu') {
                 return 'processed';
             }
 
             $updated = DB::table('izin_siswa')
                 ->where('id', $id)
-                ->where('status', 'menunggu')
+                ->where('status', $izin->status)
                 ->update([
                     'status' => 'ditolak',
                     'disetujui_oleh' => $user->id,
@@ -514,15 +514,11 @@ class KelasAkunController extends Controller
         });
 
         if ($hasil === 'not_found') {
-            return back()->withErrors([
-                'izin' => 'Pengajuan izin tidak ditemukan di kelas Anda.'
-            ]);
+            return back()->with('error', 'Pengajuan izin tidak ditemukan di kelas Anda.');
         }
 
         if ($hasil === 'processed') {
-            return back()->withErrors([
-                'izin' => 'Pengajuan izin ini sudah diproses oleh BK atau wali kelas.'
-            ]);
+            return back()->with('error', 'Pengajuan izin sudah diproses oleh BK atau Wali Kelas.');
         }
 
         return redirect()
