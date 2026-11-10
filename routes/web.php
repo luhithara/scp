@@ -454,6 +454,18 @@ Route::middleware('auth')->group(function () {
         ->middleware('auth.kelas')
         ->name('kelas.dashboard');
 
+    Route::get('/kelas/jadwal', fn () => redirect()->route('kelas.dashboard', ['tab' => 'jadwal']))
+        ->middleware('auth.kelas')
+        ->name('kelas.jadwal');
+
+    Route::get('/kelas/perizinan', fn () => redirect()->route('kelas.dashboard', ['tab' => 'perizinan']))
+        ->middleware('auth.kelas')
+        ->name('kelas.perizinan');
+
+    Route::get('/kelas/profil/edit', fn () => redirect()->route('profil.edit'))
+        ->middleware('auth.kelas')
+        ->name('kelas.profil.edit');
+
     Route::post('/kelas/izin/{id}/setujui', [KelasAkunController::class, 'setujuiIzin'])
         ->middleware('auth.kelas')
         ->name('kelas.izin.setujui');

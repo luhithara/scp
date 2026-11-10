@@ -628,7 +628,7 @@
                         Presensi
                         @break
                     @case('perizinan')
-                        Perizinan
+                        Izin Masuk
                         @break
                     @case('jadwal')
                         Jadwal
@@ -655,7 +655,7 @@
 
         <a href="{{ route('kelas.dashboard', ['tab' => 'perizinan']) }}"
            class="{{ $tabAktif === 'perizinan' ? 'active' : '' }}">
-            Perizinan
+            Izin Masuk
         </a>
 
         <a href="{{ route('kelas.dashboard', ['tab' => 'jadwal']) }}"
@@ -825,7 +825,7 @@
 
                     {{-- TABEL IZIN SISWA --}}
                     <div class="kelas-subsection">
-                        <h3 class="kelas-subsection-title">Data Perizinan Siswa</h3>
+                        <h3 class="kelas-subsection-title">Izin Masuk</h3>
 
                         <div class="kelas-table-wrapper">
                             <table class="kelas-table">
@@ -1118,8 +1118,8 @@
         <section class="kelas-section">
             <div class="kelas-section-header">
                 <div>
-                    <h2>Data Perizinan Siswa</h2>
-                    <p>Pantau pengajuan izin siswa di kelas {{ $kelas->namakelas }}.</p>
+                    <h2>Izin Masuk</h2>
+                    <p>Pantau izin siswa yang masuk untuk kelas {{ $kelas->namakelas }}.</p>
                 </div>
             </div>
 
@@ -1237,12 +1237,12 @@
                                             <div style="display:flex;gap:6px;flex-wrap:wrap;">
                                                 <form method="POST" action="{{ route('kelas.izin.setujui', $izin->id) }}">
                                                     @csrf
-                                                    <button type="submit" class="btn-kelas" onclick="return confirm('Setujui pengajuan izin siswa ini?')">Setujui</button>
+                                                    <button type="submit" class="btn-kelas" onclick="return confirm('Setujui izin siswa ini?')">Setujui</button>
                                                 </form>
                                                 <form method="POST" action="{{ route('kelas.izin.tolak', $izin->id) }}" style="display:flex;gap:5px;flex-wrap:wrap;">
                                                     @csrf
                                                     <input type="text" name="catatanbk" placeholder="Catatan (opsional)" maxlength="1000" style="max-width:150px;min-width:100px;">
-                                                    <button type="submit" class="btn-reset" onclick="return confirm('Tolak pengajuan izin siswa ini?')">Tolak</button>
+                                                    <button type="submit" class="btn-reset" onclick="return confirm('Tolak izin siswa ini?')">Tolak</button>
                                                 </form>
                                             </div>
                                         @else
@@ -1264,7 +1264,7 @@
             </div>
 
             <div class="kelas-section-footer">
-                Total {{ $jumlahIzin ?? ($daftarIzin ?? collect())->count() }} pengajuan izin.
+                Total {{ $jumlahIzin ?? ($daftarIzin ?? collect())->count() }} izin masuk.
             </div>
         </section>
 
