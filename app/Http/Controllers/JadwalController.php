@@ -398,8 +398,10 @@ class JadwalController extends Controller
             return Jadwal::create([
                 'guruid' => $guru->id,
                 'mapelid' => $mapel->id,
+                'namamapel' => $namaMapel,
                 'kelasid' => $validated['kelasid'],
                 'hari' => $validated['hari'],
+                'jamke' => $nomorMulai,
                 'jamMulai' => $jamMulai,
                 'jamSelesai' => $jamSelesai,
                 'blok' => $validated['blok'],

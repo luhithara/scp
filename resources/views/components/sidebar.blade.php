@@ -551,6 +551,57 @@
 
         </nav>
 
+    {{-- MENU AKUN KELAS --}}
+    @elseif($role === 'kelas')
+
+        <div class="scp-menu-title">Menu Akun Kelas</div>
+
+        <nav class="scp-menu">
+
+            <a
+                href="{{ route('kelas.dashboard') }}"
+                class="{{ request()->routeIs('kelas.dashboard') && request('tab', 'siswa') === 'siswa' ? 'active' : '' }}"
+            >
+                <span class="scp-menu-icon">
+                    <i class="fa-solid fa-house"></i>
+                </span>
+                <span>Dashboard</span>
+            </a>
+
+            <a
+                href="{{ route('kelas.jadwal') }}"
+                class="{{ request()->routeIs('kelas.jadwal') || (request()->routeIs('kelas.dashboard') && request('tab') === 'jadwal') ? 'active' : '' }}"
+            >
+                <span class="scp-menu-icon">
+                    <i class="fa-regular fa-calendar-days"></i>
+                </span>
+                <span>Jadwal Kelas</span>
+            </a>
+
+            <a
+                href="{{ route('kelas.perizinan') }}"
+                class="{{ request()->routeIs('kelas.perizinan') || (request()->routeIs('kelas.dashboard') && request('tab') === 'perizinan') ? 'active' : '' }}"
+            >
+                <span class="scp-menu-icon">
+                    <i class="fa-solid fa-file-circle-check"></i>
+                </span>
+                <span>Izin Masuk</span>
+            </a>
+
+            @if(Route::has('profil'))
+                <a
+                    href="{{ route('profil') }}"
+                    class="{{ request()->routeIs('profil*') ? 'active' : '' }}"
+                >
+                    <span class="scp-menu-icon">
+                        <i class="fa-regular fa-user"></i>
+                    </span>
+                    <span>Profil</span>
+                </a>
+            @endif
+
+        </nav>
+
     {{-- MENU SISWA --}}
     @elseif($role === 'siswa')
 

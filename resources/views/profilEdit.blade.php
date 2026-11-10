@@ -535,6 +535,7 @@
         ?? $guru
         ?? $waka
         ?? $bk
+        ?? $kelas
         ?? null;
 
 @endphp

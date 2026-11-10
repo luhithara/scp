@@ -17,7 +17,19 @@ class ProfilController extends Controller
 
     private function ambilDataKelas($user)
     {
-        return DB::table('kelas')
+        $query = DB::table('kelas');
+
+        if ($user->kelasid ?? null) {
+            $kelas = (clone $query)
+                ->where('id', $user->kelasid)
+                ->first();
+
+            if ($kelas) {
+                return $kelas;
+            }
+        }
+
+        return $query
             ->where('namakelas', $user->name)
             ->first();
     }

@@ -330,7 +330,6 @@ class KelasAkunController extends Controller
                 'jadwal.jamSelesai',
                 'jadwal.namamapel',
                 'jadwal.mapelid',
-                'jadwal.putaranblok',
                 'jadwal.blok',
                 'guru.nama as namaguru',
                 'ruangan.namaruangan'
