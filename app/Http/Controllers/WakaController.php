@@ -42,9 +42,9 @@ class WakaController extends Controller
                 'jadwal.*',
                 'guru.nama as namaguru',
                 'kelas.namakelas',
-                DB::raw('COALESCE(jadwal.tingkat, kelas.tingkat) as tingkat'),
-                DB::raw('COALESCE(jadwal.putaranblok, jadwal.blok) as putaranblok'),
-                DB::raw('COALESCE(mapel.namamapel, jadwal.namamapel) as namamapel')
+                'kelas.tingkat',
+                'jadwal.blok as putaranblok',
+                DB::raw("COALESCE(NULLIF(jadwal.namamapel, ''), mapel.namamapel) as namamapel")
             )
             ->orderBy('jadwal.hari')
             ->orderBy('jadwal.jamMulai');
