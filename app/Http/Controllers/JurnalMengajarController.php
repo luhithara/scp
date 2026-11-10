@@ -56,12 +56,12 @@ class JurnalMengajarController extends Controller
     {
         return DB::table('jadwal')
             ->leftJoin('mapel', 'jadwal.mapelid', '=', 'mapel.id')
-            ->leftJoin('jurusan', 'jadwal.jurusanid', '=', 'jurusan.id')
             ->leftJoin('kelas', 'jadwal.kelasid', '=', 'kelas.id')
+            ->leftJoin('jurusan', 'kelas.jurusanid', '=', 'jurusan.id')
             ->where('jadwal.guruid', $guruId)
             ->select(
                 'jadwal.*',
-                'mapel.namamapel',
+                DB::raw("COALESCE(NULLIF(jadwal.namamapel, ''), mapel.namamapel) as namamapel"),
                 'jurusan.namajurusan',
                 'kelas.namakelas'
             );
@@ -86,16 +86,16 @@ class JurnalMengajarController extends Controller
                 'mapel.id'
             )
             ->leftJoin(
-                'jurusan',
-                'jadwal.jurusanid',
-                '=',
-                'jurusan.id'
-            )
-            ->leftJoin(
                 'kelas',
                 'jadwal.kelasid',
                 '=',
                 'kelas.id'
+            )
+            ->leftJoin(
+                'jurusan',
+                'kelas.jurusanid',
+                '=',
+                'jurusan.id'
             )
             ->where('jurnal_mengajar.guruid', $guruId)
             ->select(
@@ -103,8 +103,8 @@ class JurnalMengajarController extends Controller
                 'jadwal.hari',
                 'jadwal.jamMulai',
                 'jadwal.jamSelesai',
-                'jadwal.tingkat',
-                'mapel.namamapel',
+                'kelas.tingkat',
+                DB::raw("COALESCE(NULLIF(jadwal.namamapel, ''), mapel.namamapel) as namamapel"),
                 'jadwal.kelasid',
                 'jurusan.namajurusan',
                 'kelas.namakelas'
@@ -320,7 +320,7 @@ class JurnalMengajarController extends Controller
             ->whereRaw('LOWER(TRIM(jadwal.hari)) = ?', [$hariIni])
             ->select(
                 'jadwal.*',
-                'mapel.namamapel'
+                DB::raw("COALESCE(NULLIF(jadwal.namamapel, ''), mapel.namamapel) as namamapel")
             )
             ->first();
 
