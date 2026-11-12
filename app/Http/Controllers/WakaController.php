@@ -338,8 +338,6 @@ class WakaController extends Controller
                 'jurusan.id',
                 'jurusan.kodejurusan',
                 'jurusan.namajurusan',
-
-                // Harus sama dengan properti yang dipanggil Blade.
                 DB::raw('COUNT(kelas.id) as jumlah_kelas')
             )
             ->groupBy(
@@ -350,7 +348,6 @@ class WakaController extends Controller
             ->orderBy('jurusan.namajurusan', 'asc')
             ->get();
 
-        // Alias untuk kompatibilitas dengan Blade lama.
         $dataJurusan = $daftarJurusan;
 
         return view('waka.kelas-angkatan', compact(
@@ -391,7 +388,7 @@ class WakaController extends Controller
             ->get();
 
         foreach ($dataKelas as $kelas) {
-            $kelas->total_siswa = DB::table('siswa')
+            $kelas->jumlah_siswa = DB::table('siswa')
                 ->where('kelasid', $kelas->id)
                 ->count();
         }
@@ -426,15 +423,21 @@ class WakaController extends Controller
             abort(404);
         }
 
+        // Kata kunci pencarian sesuai input Blade: name="cari"
+        $kataKunci = trim($request->input('cari', ''));
+
+        // Jumlah seluruh siswa di kelas, tidak terpengaruh pencarian
+        $jumlahSiswa = DB::table('siswa')
+            ->where('kelasid', $id)
+            ->count();
+
         $query = DB::table('siswa')
             ->where('kelasid', $id);
 
-        if ($request->filled('search')) {
-            $search = trim($request->search);
-
-            $query->where(function ($q) use ($search) {
-                $q->where('nama', 'like', "%{$search}%")
-                    ->orWhere('nisn', 'like', "%{$search}%");
+        if ($kataKunci !== '') {
+            $query->where(function ($q) use ($kataKunci) {
+                $q->where('nama', 'like', "%{$kataKunci}%")
+                    ->orWhere('nisn', 'like', "%{$kataKunci}%");
             });
         }
 
@@ -444,7 +447,9 @@ class WakaController extends Controller
 
         return view('waka.kelas-siswa', compact(
             'kelas',
-            'dataSiswa'
+            'dataSiswa',
+            'jumlahSiswa',
+            'kataKunci'
         ));
     }
 

@@ -100,11 +100,59 @@ class JadwalController extends Controller
     {
         $user = $this->cekAksesGuru();
 
-        $guru = Guru::where('kodeguru', $user->kodepegawai)->first();
+        $guru = Guru::where(
+            'kodeguru',
+            $user->kodepegawai
+        )->first();
 
         if (!$guru) {
             abort(404, 'Data guru tidak ditemukan.');
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | PERBAIKAN DATA JADWAL LAMA
+        |--------------------------------------------------------------------------
+        | Jika jadwal memiliki nama mapel tetapi mapelid kosong,
+        | hubungkan kembali ke tabel mapel.
+        */
+
+        $jadwalLama = Jadwal::where('guruid', $guru->id)
+            ->whereNull('mapelid')
+            ->whereNotNull('namamapel')
+            ->where('namamapel', '!=', '')
+            ->get();
+
+        foreach ($jadwalLama as $item) {
+            $namaMapel = trim($item->namamapel);
+
+            if ($namaMapel === '') {
+                continue;
+            }
+
+            $mapel = Mapel::whereRaw(
+                'LOWER(TRIM(namamapel)) = ?',
+                [mb_strtolower($namaMapel)]
+            )->first();
+
+            if (!$mapel) {
+                $mapel = Mapel::create([
+                    'kodemapel' => 'MAP' . strtoupper(bin2hex(random_bytes(8))),
+                    'namamapel' => $namaMapel,
+                ]);
+            }
+
+            $item->update([
+                'mapelid' => $mapel->id,
+                'namamapel' => $mapel->namamapel,
+            ]);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | AMBIL JADWAL GURU
+        |--------------------------------------------------------------------------
+        */
 
         $jadwal = Jadwal::with([
             'guru',
@@ -366,12 +414,8 @@ class JadwalController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | CARI ATAU BUAT MATA PELAJARAN
+        | CARI ATAU BUAT MATA PELAJARAN DAN SIMPAN JADWAL
         |--------------------------------------------------------------------------
-        |
-        | Nama mata pelajaran dibandingkan tanpa membedakan huruf besar/kecil.
-        | Jika belum ada, buat kode mata pelajaran otomatis dan unik.
-        |
         */
 
         $jadwal = DB::transaction(function () use (
@@ -399,7 +443,7 @@ class JadwalController extends Controller
             return Jadwal::create([
                 'guruid' => $guru->id,
                 'mapelid' => $mapel->id,
-                'namamapel' => $namaMapel,
+                'namamapel' => $mapel->namamapel,
                 'kelasid' => $validated['kelasid'],
                 'hari' => $validated['hari'],
                 'jamke' => $nomorMulai,
@@ -569,12 +613,6 @@ class JadwalController extends Controller
     {
         $this->cekAksesWaka();
 
-        $tingkat = (int) $tingkat;
-
-        if (!in_array($tingkat, [10, 11, 12])) {
-            abort(404, 'Angkatan tidak ditemukan.');
-        }
-
         $kelas = DB::table('kelas')
             ->leftJoin(
                 'jurusan',
@@ -582,56 +620,73 @@ class JadwalController extends Controller
                 '=',
                 'jurusan.id'
             )
+            ->where('kelas.id', $kelasId)
             ->select(
                 'kelas.*',
-                'jurusan.kodejurusan',
                 'jurusan.namajurusan'
             )
-            ->where('kelas.id', $kelasId)
-            ->where('kelas.tingkat', $tingkat)
-            ->where('kelas.jurusanid', $jurusanId)
             ->first();
 
         if (!$kelas) {
-            abort(404, 'Kelas tidak ditemukan.');
+            abort(404, 'Data kelas tidak ditemukan.');
         }
 
-        $jadwal = Jadwal::with([
-            'guru',
-            'mapel',
-            'ruangan',
-        ])
-            ->where('kelasid', $kelasId)
+        $jadwal = DB::table('jadwal')
+            ->leftJoin(
+                'mapel',
+                'jadwal.mapelid',
+                '=',
+                'mapel.id'
+            )
+            ->leftJoin(
+                'guru',
+                'jadwal.guruid',
+                '=',
+                'guru.id'
+            )
+            ->leftJoin(
+                'ruangan',
+                'jadwal.ruanganid',
+                '=',
+                'ruangan.id'
+            )
+            ->where('jadwal.kelasid', $kelasId)
+            ->select(
+                'jadwal.*',
+                DB::raw("
+                    COALESCE(
+                        NULLIF(mapel.namamapel, ''),
+                        NULLIF(jadwal.namamapel, '')
+                    ) AS namamapel
+                "),
+                'guru.nama AS namaguru',
+                'ruangan.namaruangan'
+            )
             ->orderByRaw("
-                CASE LOWER(hari)
+                CASE LOWER(TRIM(jadwal.hari))
                     WHEN 'senin' THEN 1
                     WHEN 'selasa' THEN 2
                     WHEN 'rabu' THEN 3
                     WHEN 'kamis' THEN 4
                     WHEN 'jumat' THEN 5
-                    ELSE 6
+                    WHEN 'sabtu' THEN 6
+                    WHEN 'minggu' THEN 7
+                    ELSE 8
                 END
             ")
-            ->orderBy('jamMulai')
+            ->orderBy('jadwal.jamMulai')
             ->get();
 
-        $ruangan = Ruangan::where('status', 'aktif')
-            ->orderBy('namaruangan')
-            ->get();
+        $jadwalTerkunci = DB::table('pengaturan_jadwal')
+            ->where('id', 1)
+            ->value('terkunci');
 
-        $jadwalTerkunci = $this->jadwalTerkunci();
-
-        return view(
-            'waka.jadwal-kelas',
-            compact(
-                'kelas',
-                'jadwal',
-                'ruangan',
-                'tingkat',
-                'jurusanId',
-                'jadwalTerkunci'
-            )
-        );
+        return view('waka.jadwal-kelas', compact(
+            'kelas',
+            'jadwal',
+            'tingkat',
+            'jadwalTerkunci'
+        ));
     }
 
     /*

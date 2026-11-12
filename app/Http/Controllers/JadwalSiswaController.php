@@ -16,20 +16,39 @@ class JadwalSiswaController extends Controller
 
     public function index()
     {
+        /*
+        |--------------------------------------------------------------------------
+        | CEK LOGIN DAN ROLE
+        |--------------------------------------------------------------------------
+        */
+
         $user = Auth::user();
 
-        // Pastikan hanya akun siswa yang bisa mengakses.
-        if (!$user || strtolower(trim($user->role ?? '')) !== 'siswa') {
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        if (strtolower(trim($user->role ?? '')) !== 'siswa') {
             abort(403, 'Halaman ini hanya untuk siswa.');
         }
 
-        // Cari data siswa berdasarkan NISN akun login.
+        /*
+        |--------------------------------------------------------------------------
+        | CARI DATA SISWA BERDASARKAN NIS
+        |--------------------------------------------------------------------------
+        */
+
+        if (empty($user->nis)) {
+            abort(404, 'NIS akun siswa tidak ditemukan.');
+        }
+
         $siswa = DB::table('siswa')
             ->join('kelas', 'siswa.kelasid', '=', 'kelas.id')
             ->leftJoin('jurusan', 'kelas.jurusanid', '=', 'jurusan.id')
-            ->where('siswa.nisn', $user->nisn)
+            ->where('siswa.nis', $user->nis)
             ->select(
                 'siswa.id',
+                'siswa.nis',
                 'siswa.nisn',
                 'siswa.nama',
                 'siswa.kelasid',
@@ -41,15 +60,25 @@ class JadwalSiswaController extends Controller
             ->first();
 
         if (!$siswa) {
-            abort(404, 'Data siswa tidak ditemukan.');
+            abort(404, 'Data siswa tidak ditemukan. Periksa kesesuaian NIS akun dengan data siswa.');
         }
 
-        // Tanggal hari ini.
+        /*
+        |--------------------------------------------------------------------------
+        | TANGGAL DAN HARI
+        |--------------------------------------------------------------------------
+        */
+
         $hariIni = Carbon::today()->toDateString();
 
-        // Ambil jadwal khusus kelas siswa.
+        /*
+        |--------------------------------------------------------------------------
+        | AMBIL JADWAL SESUAI KELAS SISWA
+        |--------------------------------------------------------------------------
+        */
+
         $jadwal = DB::table('jadwal')
-            ->join('guru', 'jadwal.guruid', '=', 'guru.id')
+            ->leftJoin('guru', 'jadwal.guruid', '=', 'guru.id')
             ->leftJoin('mapel', 'jadwal.mapelid', '=', 'mapel.id')
             ->where('jadwal.kelasid', $siswa->kelasid)
             ->select(
@@ -57,16 +86,21 @@ class JadwalSiswaController extends Controller
                 'jadwal.kelasid',
                 'jadwal.guruid',
                 'jadwal.mapelid',
-                'jadwal.namamapel',
                 'jadwal.hari',
                 'jadwal.jamke',
                 'jadwal.jamMulai',
                 'jadwal.jamSelesai',
                 'jadwal.putaranblok',
                 'jadwal.blok',
-                'guru.nama as namaguru',
-                'mapel.namamapel as namamapelmaster'
+                'guru.nama as namaguru'
             )
+            ->selectRaw("
+                COALESCE(
+                    NULLIF(TRIM(mapel.namamapel), ''),
+                    NULLIF(TRIM(jadwal.namamapel), ''),
+                    'Mata Pelajaran Belum Diatur'
+                ) AS namamapel
+            ")
             ->orderByRaw("
                 CASE LOWER(jadwal.hari)
                     WHEN 'senin' THEN 1
@@ -80,7 +114,12 @@ class JadwalSiswaController extends Controller
             ->orderBy('jadwal.jamMulai')
             ->get();
 
-        // Tentukan putaran yang ditemukan pada jadwal kelas.
+        /*
+        |--------------------------------------------------------------------------
+        | PUTARAN BLOK
+        |--------------------------------------------------------------------------
+        */
+
         $putaranAktif = $jadwal
             ->pluck('putaranblok')
             ->filter()
@@ -91,11 +130,17 @@ class JadwalSiswaController extends Controller
             ? $putaranAktif->first()
             : null;
 
-        return view('jadwalSiswa', compact(
-            'siswa',
-            'jadwal',
-            'putaranSekarang',
-            'hariIni'
-        ));
+        /*
+        |--------------------------------------------------------------------------
+        | TAMPILKAN HALAMAN
+        |--------------------------------------------------------------------------
+        */
+
+        return view('jadwalSiswa', [
+            'siswa' => $siswa,
+            'jadwal' => $jadwal,
+            'putaranSekarang' => $putaranSekarang,
+            'hariIni' => $hariIni,
+        ]);
     }
 }

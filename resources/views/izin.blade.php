@@ -5,9 +5,7 @@
 @php
     $dataIzin = $riwayatIzin ?? $izin ?? collect();
 
-    $namaSiswa = $siswa->nama
-        ?? auth()->user()->name
-        ?? '-';
+    $namaSiswa = $siswa->nama ?? '-';
 
     $totalIzin = $dataIzin->count();
     $menunggu = $dataIzin->where('status', 'menunggu')->count();

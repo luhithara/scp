@@ -16,12 +16,8 @@ class Mapel extends Model
         'namamapel',
     ];
 
-
     public function jadwal()
     {
-        return $this->hasMany(
-            Jadwal::class,
-            'mapelid'
-        );
+        return $this->hasMany(Jadwal::class, 'mapelid', 'id');
     }
 }

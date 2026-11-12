@@ -16,18 +16,45 @@ class PresensiSiswaController extends Controller
 
     public function index()
     {
+        /*
+        |--------------------------------------------------------------------------
+        | CEK LOGIN
+        |--------------------------------------------------------------------------
+        */
+
         $user = Auth::user();
 
-        // Pastikan hanya siswa yang bisa mengakses.
-        if (!$user || strtolower(trim($user->role ?? '')) !== 'siswa') {
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | CEK ROLE
+        |--------------------------------------------------------------------------
+        */
+
+        if (strtolower(trim($user->role ?? '')) !== 'siswa') {
             abort(403, 'Halaman ini hanya untuk siswa.');
         }
 
-        // Cari data siswa berdasarkan NISN akun login.
-        $siswa = Siswa::where('nisn', $user->nisn)->first();
+        /*
+        |--------------------------------------------------------------------------
+        | CARI SISWA BERDASARKAN NIS
+        |--------------------------------------------------------------------------
+        */
+
+        if (empty($user->nis)) {
+            abort(404, 'NIS akun siswa tidak ditemukan.');
+        }
+
+        $siswa = Siswa::where('nis', $user->nis)->first();
 
         if (!$siswa) {
-            abort(404, 'Data siswa tidak ditemukan.');
+            abort(
+                404,
+                'Data siswa tidak ditemukan. Periksa kesesuaian NIS akun dengan data siswa.'
+            );
         }
 
         /*
@@ -37,8 +64,24 @@ class PresensiSiswaController extends Controller
         */
 
         $presensi = DB::table('presensi')
-            ->leftJoin('jadwal', 'jadwal.id', '=', 'presensi.jadwalid')
-            ->leftJoin('guru', 'guru.id', '=', 'jadwal.guruid')
+            ->leftJoin(
+                'jadwal',
+                'jadwal.id',
+                '=',
+                'presensi.jadwalid'
+            )
+            ->leftJoin(
+                'guru',
+                'guru.id',
+                '=',
+                'jadwal.guruid'
+            )
+            ->leftJoin(
+                'mapel',
+                'mapel.id',
+                '=',
+                'jadwal.mapelid'
+            )
             ->select(
                 'presensi.id',
                 'presensi.siswaid',
@@ -50,9 +93,15 @@ class PresensiSiswaController extends Controller
                 'jadwal.hari',
                 'jadwal.jamMulai',
                 'jadwal.jamSelesai',
-                'jadwal.namamapel',
                 'guru.nama as namaguru'
             )
+            ->selectRaw("
+                COALESCE(
+                    NULLIF(TRIM(mapel.namamapel), ''),
+                    NULLIF(TRIM(jadwal.namamapel), ''),
+                    'Mata Pelajaran'
+                ) AS namamapel
+            ")
             ->where('presensi.siswaid', $siswa->id)
             ->orderByDesc('presensi.tanggal_presensi')
             ->orderByDesc('presensi.waktu')
@@ -62,7 +111,7 @@ class PresensiSiswaController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | AMBIL ALASAN IZIN
+        | AMBIL TANGGAL PRESENSI
         |--------------------------------------------------------------------------
         */
 
@@ -70,42 +119,72 @@ class PresensiSiswaController extends Controller
             ->getCollection()
             ->pluck('tanggal_presensi')
             ->filter()
+            ->map(function ($tanggal) {
+                return date('Y-m-d', strtotime($tanggal));
+            })
             ->unique()
-            ->values();
-
-        $izin = DB::table('izin_siswa')
-            ->where('siswaid', $siswa->id)
-            ->whereIn('tanggal', $tanggalPresensi)
-            ->orderByDesc('id')
-            ->get()
-            ->groupBy(function ($item) {
-                return date('Y-m-d', strtotime($item->tanggal));
-            });
+            ->values()
+            ->all();
 
         /*
         |--------------------------------------------------------------------------
-        | GABUNGKAN KETERANGAN PRESENSI DAN IZIN
+        | AMBIL DATA IZIN SISWA
         |--------------------------------------------------------------------------
         */
 
-        foreach ($presensi as $item) {
-            $tanggal = $item->tanggal_presensi;
+        $izin = collect();
 
-            $izinHariIni = $izin->get($tanggal, collect())->first();
-
-            $item->keterangan = $item->keterangan
-                ?: ($izinHariIni->alasan ?? null);
+        if (!empty($tanggalPresensi)) {
+            $izin = DB::table('izin_siswa')
+                ->where('siswaid', $siswa->id)
+                ->whereIn('tanggal', $tanggalPresensi)
+                ->orderByDesc('id')
+                ->get()
+                ->groupBy(function ($item) {
+                    return date(
+                        'Y-m-d',
+                        strtotime($item->tanggal)
+                    );
+                });
         }
 
         /*
         |--------------------------------------------------------------------------
-        | KIRIM KE VIEW
+        | GABUNGKAN KETERANGAN IZIN
         |--------------------------------------------------------------------------
         */
 
-        return view('presensi.siswa', compact(
-            'presensi',
-            'siswa'
-        ));
+        foreach ($presensi as $item) {
+
+            $tanggal = date(
+                'Y-m-d',
+                strtotime($item->tanggal_presensi)
+            );
+
+            $izinHariIni = $izin->get(
+                $tanggal,
+                collect()
+            )->first();
+
+            // Pertahankan keterangan yang sudah tersimpan.
+            // Jika kosong, ambil alasan izin siswa.
+            if (
+                empty($item->keterangan) &&
+                $izinHariIni
+            ) {
+                $item->keterangan = $izinHariIni->alasan;
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | KIRIM DATA KE VIEW
+        |--------------------------------------------------------------------------
+        */
+
+        return view('presensi.siswa', [
+            'presensi' => $presensi,
+            'siswa' => $siswa,
+        ]);
     }
 }

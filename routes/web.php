@@ -20,7 +20,7 @@ use App\Http\Controllers\JadwalController;
 use App\Http\Controllers\WakaDataController;
 use App\Http\Controllers\WakaImportController;
 use App\Http\Controllers\KelasAkunController;
-
+use App\Http\Controllers\RekapPresensiController;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,7 +36,6 @@ Route::post('/login', [LoginController::class, 'login'])
 
 Route::post('/logout', [LoginController::class, 'logout'])
     ->name('logout');
-
 
 /*
 |--------------------------------------------------------------------------
@@ -56,7 +55,6 @@ Route::get('/forgot-password/otp', [ForgotPasswordController::class, 'showOtpFor
 Route::post('/forgot-password/otp', [ForgotPasswordController::class, 'verifyOtpAndReset'])
     ->name('password.verify');
 
-
 /*
 |--------------------------------------------------------------------------
 | DASHBOARD UMUM
@@ -66,7 +64,6 @@ Route::post('/forgot-password/otp', [ForgotPasswordController::class, 'verifyOtp
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware('auth')
     ->name('dashboard');
-
 
 /*
 |--------------------------------------------------------------------------
@@ -91,7 +88,6 @@ Route::middleware('auth')->group(function () {
     Route::put('/profil', [ProfilController::class, 'update'])
         ->name('profil.update');
 
-
     /*
     |--------------------------------------------------------------------------
     | IZIN
@@ -104,7 +100,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/izin', [IzinController::class, 'store'])
         ->name('izin.store');
 
-
     /*
     |--------------------------------------------------------------------------
     | GURU - DASHBOARD
@@ -113,7 +108,6 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/guru/dashboard', [GuruController::class, 'dashboard'])
         ->name('guru.dashboard');
-
 
     /*
     |--------------------------------------------------------------------------
@@ -130,7 +124,6 @@ Route::middleware('auth')->group(function () {
     Route::delete('/guru/jadwal/{id}', [JadwalController::class, 'destroy'])
         ->name('guru.jadwal.hapus');
 
-
     /*
     |--------------------------------------------------------------------------
     | GURU - IZIN
@@ -139,7 +132,6 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/guru/izin', [GuruController::class, 'izin'])
         ->name('guru.izin');
-
 
     /*
     |--------------------------------------------------------------------------
@@ -155,7 +147,6 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/presensi/{jadwalid}', [PresensiController::class, 'store'])
         ->name('presensi.store');
-
 
     /*
     |--------------------------------------------------------------------------
@@ -181,7 +172,6 @@ Route::middleware('auth')->group(function () {
     Route::delete('/jurnal-guru/{id}', [JurnalMengajarController::class, 'destroy'])
         ->name('jurnal.guru.destroy');
 
-
     /*
     |--------------------------------------------------------------------------
     | NOTIFIKASI
@@ -197,7 +187,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/notifikasi/{id}/baca', [NotifikasiController::class, 'baca'])
         ->name('notifikasi.baca');
 
-
     /*
     |--------------------------------------------------------------------------
     | PRESENSI SISWA
@@ -206,7 +195,6 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/presensi-siswa', [PresensiSiswaController::class, 'index'])
         ->name('presensi.siswa');
-
 
     /*
     |--------------------------------------------------------------------------
@@ -217,7 +205,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/jadwal-siswa', [JadwalSiswaController::class, 'index'])
         ->name('jadwal.siswa');
 
-
     /*
     |--------------------------------------------------------------------------
     | WAKA - DASHBOARD
@@ -226,7 +213,6 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/waka/dashboard', [WakaController::class, 'dashboard'])
         ->name('waka.dashboard');
-
 
     /*
     |--------------------------------------------------------------------------
@@ -255,7 +241,6 @@ Route::middleware('auth')->group(function () {
     Route::delete('/waka/jadwal/{id}', [JadwalController::class, 'hapusJadwal'])
         ->name('waka.jadwal.hapus');
 
-
     /*
     |--------------------------------------------------------------------------
     | WAKA - JURNAL
@@ -265,6 +250,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/waka/jurnal', [WakaController::class, 'jurnal'])
         ->name('waka.jurnal');
 
+    /*
+    |--------------------------------------------------------------------------
+    | WAKA - REKAP PRESENSI
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/waka/rekap-presensi', [RekapPresensiController::class, 'index'])
+        ->name('waka.rekap-presensi');
+
+    Route::get('/waka/rekap-presensi/export-excel', [RekapPresensiController::class, 'exportExcel'])
+        ->name('waka.rekap-presensi.excel');
 
     /*
     |--------------------------------------------------------------------------
@@ -287,7 +283,6 @@ Route::middleware('auth')->group(function () {
     Route::delete('/waka/guru/{id}', [WakaDataController::class, 'hapusGuru'])
         ->name('waka.guru.hapus');
 
-
     /*
     |--------------------------------------------------------------------------
     | WAKA - DATA SISWA
@@ -308,7 +303,6 @@ Route::middleware('auth')->group(function () {
 
     Route::delete('/waka/siswa/{id}', [WakaDataController::class, 'hapusSiswa'])
         ->name('waka.siswa.hapus');
-
 
     /*
     |--------------------------------------------------------------------------
@@ -340,17 +334,15 @@ Route::middleware('auth')->group(function () {
     Route::delete('/waka/kelas/{id}', [WakaDataController::class, 'hapusKelas'])
         ->name('waka.kelas.hapus');
 
-
     /*
     |--------------------------------------------------------------------------
-    | WAKA - IMPOR DATA EXCEL / CSV / PDF
+    | WAKA - IMPORT EXCEL SISWA/GURU DAN PDF JADWAL
     |--------------------------------------------------------------------------
     */
 
     Route::post('/waka/data/import/{jenis}', [WakaImportController::class, 'import'])
-        ->whereIn('jenis', ['siswa', 'guru', 'kelas'])
+        ->where('jenis', 'siswa|guru|jadwal_kelas')
         ->name('waka.data.import');
-
 
     /*
     |--------------------------------------------------------------------------
@@ -360,7 +352,6 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/waka/data', [WakaDataController::class, 'index'])
         ->name('waka.data');
-
 
     /*
     |--------------------------------------------------------------------------
@@ -373,7 +364,6 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/waka/data/orangtua', [WakaDataController::class, 'simpanOrangtua'])
         ->name('waka.orangtua.simpan');
-
 
     /*
     |--------------------------------------------------------------------------
@@ -402,7 +392,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/bk/butuh-penanganan', [BKController::class, 'butuhPenanganan'])
         ->name('bk.butuh-penanganan');
 
-
     /*
     |--------------------------------------------------------------------------
     | BK - PERIZINAN
@@ -417,7 +406,6 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/bk/izin/{id}/tolak', [BKController::class, 'tolakIzin'])
         ->name('bk.izin.tolak');
-
 
     /*
     |--------------------------------------------------------------------------
@@ -442,7 +430,6 @@ Route::middleware('auth')->group(function () {
 
     Route::put('/orangtua/profil', [OrangtuaController::class, 'updateProfil'])
         ->name('orangtua.profil.update');
-
 
     /*
     |--------------------------------------------------------------------------
@@ -473,5 +460,4 @@ Route::middleware('auth')->group(function () {
     Route::post('/kelas/izin/{id}/tolak', [KelasAkunController::class, 'tolakIzin'])
         ->middleware('auth.kelas')
         ->name('kelas.izin.tolak');
-
 });

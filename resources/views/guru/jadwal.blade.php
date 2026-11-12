@@ -596,10 +596,12 @@
 
                     <div>
                         <h3 class="jadwal-subject">
-                            {{ $item->mapel->namamapel ?? 'Mata Pelajaran' }}
-                        </h3>
-
-                        <div class="jadwal-detail">
+    {{
+        $item->mapel->namamapel
+        ?? $item->namamapel
+        ?? 'Nama mata pelajaran belum tersedia'
+    }}
+</h3>          <div class="jadwal-detail">
                             <strong>Kelas:</strong>
                             {{ $item->kelas->namakelas ?? '-' }}
 

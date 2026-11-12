@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 
 class OrangtuaController extends Controller
 {
@@ -25,7 +26,7 @@ class OrangtuaController extends Controller
             return redirect()->route('login');
         }
 
-        if ($user->role !== 'orangtua') {
+        if (strtolower(trim($user->role ?? '')) !== 'orangtua') {
             abort(403, 'Halaman ini khusus untuk akun orangtua.');
         }
 
@@ -34,12 +35,20 @@ class OrangtuaController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | AMBIL DATA ANAK
+    | AMBIL DATA ANAK BERDASARKAN NIS
     |--------------------------------------------------------------------------
+    |
+    | SCP menggunakan NIS sebagai identitas siswa.
+    | Tidak menggunakan NISN.
+    |
     */
 
     private function ambilAnak($user)
     {
+        if (empty($user->nis)) {
+            return null;
+        }
+
         return DB::table('siswa')
             ->leftJoin(
                 'kelas',
@@ -53,7 +62,7 @@ class OrangtuaController extends Controller
                 '=',
                 'jurusan.id'
             )
-            ->where('siswa.nisn', $user->nisn)
+            ->where('siswa.nis', trim($user->nis))
             ->select(
                 'siswa.*',
                 'kelas.namakelas as namakelas',
@@ -72,7 +81,7 @@ class OrangtuaController extends Controller
     private function formatJam($jam)
     {
         if ($jam === null || $jam === '') {
-            return '00:00';
+            return '--:--';
         }
 
         if (is_string($jam) && str_contains($jam, ':')) {
@@ -142,22 +151,10 @@ class OrangtuaController extends Controller
                 $anak->kelasid
             )
 
-            /*
-            |--------------------------------------------------------------------------
-            | FILTER PERIODE BLOK
-            |--------------------------------------------------------------------------
-            |
-            | Jadwal dengan tanggal mulai dan selesai terisi:
-            | hanya tampil ketika periode masih aktif.
-            |
-            | Jadwal lama dengan kedua tanggal NULL:
-            | tetap ditampilkan agar data lama tidak hilang.
-            |
-            */
-
+            // Filter periode blok.
             ->where(function ($q) use ($tanggalHariIni) {
 
-                // Jadwal yang memiliki periode aktif
+                // Jadwal dengan periode aktif.
                 $q->where(function ($sub) use ($tanggalHariIni) {
 
                     $sub->whereNotNull(
@@ -179,7 +176,7 @@ class OrangtuaController extends Controller
 
                 })
 
-                // Jadwal lama yang belum memiliki periode
+                // Jadwal lama tanpa periode blok.
                 ->orWhere(function ($sub) {
 
                     $sub->whereNull(
@@ -202,20 +199,20 @@ class OrangtuaController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | JIKA HANYA JADWAL HARI INI
+        | FILTER HARI
         |--------------------------------------------------------------------------
         */
 
         if ($hanyaHariIni) {
-            $query->where(
-                'jadwal.hari',
-                $this->hariSekarang()
+            $query->whereRaw(
+                'LOWER(TRIM(jadwal.hari)) = ?',
+                [$this->hariSekarang()]
             );
         }
 
         /*
         |--------------------------------------------------------------------------
-        | AMBIL DATA JADWAL
+        | AMBIL JADWAL
         |--------------------------------------------------------------------------
         */
 
@@ -225,7 +222,7 @@ class OrangtuaController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | RAPIKAN DATA JADWAL
+        | RAPIIKAN DATA
         |--------------------------------------------------------------------------
         */
 
@@ -239,13 +236,17 @@ class OrangtuaController extends Controller
                 $item->jamSelesai
             );
 
-            // Gunakan nama mapel dari input guru
-            // jika mapel master tidak tersedia.
+            // Gunakan nama mapel dari input jadwal
+            // jika nama mapel master tidak tersedia.
             if (
                 empty($item->namamapelmaster) &&
                 !empty($item->namamapel)
             ) {
                 $item->namamapelmaster = $item->namamapel;
+            }
+
+            if (empty($item->namamapelmaster)) {
+                $item->namamapelmaster = 'Mata Pelajaran';
             }
 
             if (empty($item->namaguru)) {
@@ -264,89 +265,69 @@ class OrangtuaController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | DASHBOARD ORANGTUA
+    | HITUNG STATISTIK PRESENSI
     |--------------------------------------------------------------------------
     */
 
-    public function dashboard()
+    private function hitungPresensi($siswaId)
     {
-        $user = $this->cekOrangtua();
+        $rekap = DB::table('presensi')
+            ->where('siswaid', $siswaId)
+            ->selectRaw("
+                SUM(
+                    CASE
+                        WHEN LOWER(TRIM(status)) = 'hadir'
+                        THEN 1 ELSE 0
+                    END
+                ) AS jumlahHadir
+            ")
+            ->selectRaw("
+                SUM(
+                    CASE
+                        WHEN LOWER(TRIM(status)) = 'izin'
+                        THEN 1 ELSE 0
+                    END
+                ) AS jumlahIzin
+            ")
+            ->selectRaw("
+                SUM(
+                    CASE
+                        WHEN LOWER(TRIM(status)) = 'sakit'
+                        THEN 1 ELSE 0
+                    END
+                ) AS jumlahSakit
+            ")
+            ->selectRaw("
+                SUM(
+                    CASE
+                        WHEN LOWER(TRIM(status)) = 'alpa'
+                        THEN 1 ELSE 0
+                    END
+                ) AS jumlahAlpa
+            ")
+            ->first();
 
-        if (
-            $user instanceof
-            \Illuminate\Http\RedirectResponse
-        ) {
-            return $user;
-        }
+        return [
+            'jumlahHadir' => (int) ($rekap->jumlahHadir ?? 0),
+            'jumlahIzin' => (int) ($rekap->jumlahIzin ?? 0),
+            'jumlahSakit' => (int) ($rekap->jumlahSakit ?? 0),
+            'jumlahAlpa' => (int) ($rekap->jumlahAlpa ?? 0),
+        ];
+    }
 
-        /*
-        |--------------------------------------------------------------------------
-        | DATA ANAK
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | AMBIL PRESENSI HARI INI
+    |--------------------------------------------------------------------------
+    |
+    | Mengikuti struktur yang digunakan pada controller sebelumnya:
+    | presensi.created_at dan presensi.waktu.
+    |
+    */
 
-        $anak = $this->ambilAnak($user);
-
-        if (!$anak) {
-            abort(404, 'Data anak tidak ditemukan.');
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | HARI SEKARANG
-        |--------------------------------------------------------------------------
-        */
-
-        $hariSekarang = $this->hariSekarang();
-
-        /*
-        |--------------------------------------------------------------------------
-        | JADWAL HARI INI
-        |--------------------------------------------------------------------------
-        */
-
-        $jadwalHariIni = $this->ambilJadwalAnak(
-            $anak,
-            true
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | JUMLAH PRESENSI
-        |--------------------------------------------------------------------------
-        */
-
-        $jumlahHadir = DB::table('presensi')
-            ->where('siswaid', $anak->id)
-            ->where('status', 'hadir')
-            ->count();
-
-        $jumlahIzin = DB::table('presensi')
-            ->where('siswaid', $anak->id)
-            ->where('status', 'izin')
-            ->count();
-
-        $jumlahSakit = DB::table('presensi')
-            ->where('siswaid', $anak->id)
-            ->where('status', 'sakit')
-            ->count();
-
-        $jumlahAlpa = DB::table('presensi')
-            ->where('siswaid', $anak->id)
-            ->where('status', 'alpa')
-            ->count();
-
-        /*
-        |--------------------------------------------------------------------------
-        | PRESENSI HARI INI
-        |--------------------------------------------------------------------------
-        |
-        | Menggunakan created_at karena tabel presensi
-        | tidak menggunakan kolom tanggal.
-        |
-        */
-
-        $presensiHariIni = DB::table('presensi')
+    private function ambilPresensiHariIni($siswaId)
+    {
+        return DB::table('presensi')
             ->leftJoin(
                 'jadwal',
                 'presensi.jadwalid',
@@ -367,7 +348,7 @@ class OrangtuaController extends Controller
             )
             ->where(
                 'presensi.siswaid',
-                $anak->id
+                $siswaId
             )
             ->whereDate(
                 'presensi.created_at',
@@ -380,26 +361,85 @@ class OrangtuaController extends Controller
                 'jadwal.namamapel'
             )
             ->orderBy('presensi.waktu')
-            ->get();
+            ->get()
+            ->map(function ($item) {
 
-        /*
-        |--------------------------------------------------------------------------
-        | RIWAYAT IZIN TERBARU
-        |--------------------------------------------------------------------------
-        */
+                if (
+                    empty($item->namamapelmaster) &&
+                    !empty($item->namamapel)
+                ) {
+                    $item->namamapelmaster = $item->namamapel;
+                }
 
+                if (empty($item->namamapelmaster)) {
+                    $item->namamapelmaster = 'Mata Pelajaran';
+                }
+
+                if (empty($item->namaguru)) {
+                    $item->namaguru = '-';
+                }
+
+                $item->status = strtolower(
+                    trim((string) $item->status)
+                );
+
+                return $item;
+            });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | DASHBOARD ORANGTUA
+    |--------------------------------------------------------------------------
+    */
+
+    public function dashboard()
+    {
+        $user = $this->cekOrangtua();
+
+        if ($user instanceof RedirectResponse) {
+            return $user;
+        }
+
+        // Data anak berdasarkan NIS.
+        $anak = $this->ambilAnak($user);
+
+        if (!$anak) {
+            abort(
+                404,
+                'Data anak belum ditemukan. Periksa NIS pada akun Orangtua dan data siswa.'
+            );
+        }
+
+        // Hari sekarang.
+        $hariSekarang = $this->hariSekarang();
+
+        // Jadwal hari ini.
+        $jadwalHariIni = $this->ambilJadwalAnak(
+            $anak,
+            true
+        );
+
+        // Statistik presensi seluruh riwayat.
+        $statistik = $this->hitungPresensi($anak->id);
+
+        $jumlahHadir = $statistik['jumlahHadir'];
+        $jumlahIzin = $statistik['jumlahIzin'];
+        $jumlahSakit = $statistik['jumlahSakit'];
+        $jumlahAlpa = $statistik['jumlahAlpa'];
+
+        // Presensi hari ini.
+        $presensiHariIni = $this->ambilPresensiHariIni(
+            $anak->id
+        );
+
+        // Riwayat izin terbaru.
         $izinTerbaru = DB::table('izin_siswa')
             ->where('siswaid', $anak->id)
             ->orderByDesc('tanggal')
             ->orderByDesc('waktu')
             ->limit(5)
             ->get();
-
-        /*
-        |--------------------------------------------------------------------------
-        | KIRIM DATA KE DASHBOARD
-        |--------------------------------------------------------------------------
-        */
 
         return view(
             'orangtua.dashboard',
@@ -428,10 +468,7 @@ class OrangtuaController extends Controller
     {
         $user = $this->cekOrangtua();
 
-        if (
-            $user instanceof
-            \Illuminate\Http\RedirectResponse
-        ) {
+        if ($user instanceof RedirectResponse) {
             return $user;
         }
 
@@ -463,10 +500,7 @@ class OrangtuaController extends Controller
     {
         $user = $this->cekOrangtua();
 
-        if (
-            $user instanceof
-            \Illuminate\Http\RedirectResponse
-        ) {
+        if ($user instanceof RedirectResponse) {
             return $user;
         }
 
@@ -476,12 +510,7 @@ class OrangtuaController extends Controller
             abort(404, 'Data anak tidak ditemukan.');
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | AMBIL SELURUH RIWAYAT PRESENSI ANAK
-        |--------------------------------------------------------------------------
-        */
-
+        // Seluruh riwayat presensi anak.
         $presensi = DB::table('presensi')
             ->leftJoin(
                 'jadwal',
@@ -513,39 +542,38 @@ class OrangtuaController extends Controller
             )
             ->orderByDesc('presensi.created_at')
             ->orderByDesc('presensi.waktu')
-            ->get();
+            ->get()
+            ->map(function ($item) {
 
-        /*
-        |--------------------------------------------------------------------------
-        | HITUNG REKAP PRESENSI
-        |--------------------------------------------------------------------------
-        */
+                if (
+                    empty($item->namamapelmaster) &&
+                    !empty($item->namamapel)
+                ) {
+                    $item->namamapelmaster = $item->namamapel;
+                }
 
-        $jumlahHadir = DB::table('presensi')
-            ->where('siswaid', $anak->id)
-            ->where('status', 'hadir')
-            ->count();
+                if (empty($item->namamapelmaster)) {
+                    $item->namamapelmaster = 'Mata Pelajaran';
+                }
 
-        $jumlahIzin = DB::table('presensi')
-            ->where('siswaid', $anak->id)
-            ->where('status', 'izin')
-            ->count();
+                if (empty($item->namaguru)) {
+                    $item->namaguru = '-';
+                }
 
-        $jumlahSakit = DB::table('presensi')
-            ->where('siswaid', $anak->id)
-            ->where('status', 'sakit')
-            ->count();
+                $item->status = strtolower(
+                    trim((string) $item->status)
+                );
 
-        $jumlahAlpa = DB::table('presensi')
-            ->where('siswaid', $anak->id)
-            ->where('status', 'alpa')
-            ->count();
+                return $item;
+            });
 
-        /*
-        |--------------------------------------------------------------------------
-        | TAMPILKAN HALAMAN PRESENSI ORANGTUA
-        |--------------------------------------------------------------------------
-        */
+        // Statistik presensi.
+        $statistik = $this->hitungPresensi($anak->id);
+
+        $jumlahHadir = $statistik['jumlahHadir'];
+        $jumlahIzin = $statistik['jumlahIzin'];
+        $jumlahSakit = $statistik['jumlahSakit'];
+        $jumlahAlpa = $statistik['jumlahAlpa'];
 
         return view(
             'orangtua.presensi',
@@ -571,10 +599,7 @@ class OrangtuaController extends Controller
     {
         $user = $this->cekOrangtua();
 
-        if (
-            $user instanceof
-            \Illuminate\Http\RedirectResponse
-        ) {
+        if ($user instanceof RedirectResponse) {
             return $user;
         }
 
@@ -608,10 +633,7 @@ class OrangtuaController extends Controller
     {
         $user = $this->cekOrangtua();
 
-        if (
-            $user instanceof
-            \Illuminate\Http\RedirectResponse
-        ) {
+        if ($user instanceof RedirectResponse) {
             return $user;
         }
 
@@ -645,10 +667,7 @@ class OrangtuaController extends Controller
     {
         $user = $this->cekOrangtua();
 
-        if (
-            $user instanceof
-            \Illuminate\Http\RedirectResponse
-        ) {
+        if ($user instanceof RedirectResponse) {
             return $user;
         }
 
@@ -676,10 +695,7 @@ class OrangtuaController extends Controller
                 'required',
                 'email',
                 'max:255',
-                Rule::unique(
-                    'users',
-                    'email'
-                )->ignore($user->id),
+                Rule::unique('users', 'email')->ignore($user->id),
             ],
 
             'hubungan' => [
@@ -740,89 +756,58 @@ class OrangtuaController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | UPDATE USERS
+        | SIMPAN DALAM TRANSAKSI
         |--------------------------------------------------------------------------
         */
 
-        $dataUser = [
+        DB::transaction(function () use ($request, $user, $anak) {
 
-            'name' => $request->nama,
-
-            'email' => $request->email,
-
-            'updated_at' => now(),
-
-        ];
-
-        if ($request->filled('password')) {
-
-            $dataUser['password'] = Hash::make(
-                $request->password
-            );
-
-        }
-
-        DB::table('users')
-            ->where('id', $user->id)
-            ->update($dataUser);
-
-        /*
-        |--------------------------------------------------------------------------
-        | UPDATE DATA ORANGTUA
-        |--------------------------------------------------------------------------
-        */
-
-        $dataOrangtua = [
-
-            'nama' => $request->nama,
-
-            'hubungan' => $request->hubungan,
-
-            'nomortelepon' => $request->nomortelepon,
-
-            'alamat' => $request->alamat,
-
-            'updated_at' => now(),
-
-        ];
-
-        $orangtuaAda = DB::table('orangtuas')
-            ->where('siswaid', $anak->id)
-            ->exists();
-
-        if ($orangtuaAda) {
-
-            DB::table('orangtuas')
-                ->where('siswaid', $anak->id)
-                ->update($dataOrangtua);
-
-        } else {
-
-            DB::table('orangtuas')->insert([
-
-                'siswaid' => $anak->id,
-
-                'nama' => $request->nama,
-
-                'hubungan' => $request->hubungan,
-
-                'nomortelepon' => $request->nomortelepon,
-
-                'alamat' => $request->alamat,
-
-                'created_at' => now(),
-
+            // Update akun login.
+            $dataUser = [
+                'name' => $request->nama,
+                'email' => $request->email,
                 'updated_at' => now(),
+            ];
 
-            ]);
+            if ($request->filled('password')) {
+                $dataUser['password'] = Hash::make(
+                    $request->password
+                );
+            }
 
-        }
+            DB::table('users')
+                ->where('id', $user->id)
+                ->update($dataUser);
 
-        /*
-        |--------------------------------------------------------------------------
-        | KEMBALI KE PROFIL
-        |--------------------------------------------------------------------------
-        */
+            // Update data orangtua.
+            $dataOrangtua = [
+                'nama' => $request->nama,
+                'hubungan' => $request->hubungan,
+                'nomortelepon' => $request->nomortelepon,
+                'alamat' => $request->alamat,
+                'updated_at' => now(),
+            ];
+
+            $orangtuaAda = DB::table('orangtuas')
+                ->where('siswaid', $anak->id)
+                ->exists();
+
+            if ($orangtuaAda) {
+
+                DB::table('orangtuas')
+                    ->where('siswaid', $anak->id)
+                    ->update($dataOrangtua);
+
+            } else {
+
+                $dataOrangtua['siswaid'] = $anak->id;
+                $dataOrangtua['created_at'] = now();
+
+                DB::table('orangtuas')
+                    ->insert($dataOrangtua);
+
+            }
+        });
 
         return redirect()
             ->route('orangtua.profil')

@@ -5,6 +5,20 @@
 @php
     $tanggalTampilan = \Carbon\Carbon::parse($tanggalHariIni)
         ->translatedFormat('l, d F Y');
+
+    // Pastikan data yang digunakan berbentuk Collection.
+    $siswa = $siswa ?? collect();
+    $presensi = $presensi ?? collect();
+    $izinDisetujui = $izinDisetujui ?? collect();
+
+    // Samakan tipe key ID siswa agar pencarian data konsisten.
+    $presensi = $presensi->keyBy(function ($item) {
+        return (string) $item->siswaid;
+    });
+
+    $izinDisetujui = $izinDisetujui->keyBy(function ($item) {
+        return (string) $item->siswaid;
+    });
 @endphp
 
 <div class="pagehead">
@@ -41,9 +55,15 @@
     <div class="panel-heading">
         <div>
             <span class="panel-label">INFORMASI JADWAL</span>
-            <h2>{{ $jadwal->namamapel ?? '-' }}</h2>
+
+            {{-- PERBAIKAN: menggunakan namamapel --}}
+            <h2>
+                {{ $jadwal->namamapel ?? 'Mata Pelajaran Belum Diatur' }}
+            </h2>
+
             <p>
                 {{ $jadwal->namakelas ?? '-' }}
+
                 @if(!empty($jadwal->namajurusan))
                     · {{ $jadwal->namajurusan }}
                 @endif
@@ -56,10 +76,12 @@
     </div>
 
     <div class="jadwal-info-grid">
+
         <div class="jadwal-info-item">
             <div class="info-icon">
                 <i class="fas fa-calendar"></i>
             </div>
+
             <div>
                 <span>Hari</span>
                 <strong>{{ $jadwal->hari ?? '-' }}</strong>
@@ -70,6 +92,7 @@
             <div class="info-icon">
                 <i class="fas fa-clock"></i>
             </div>
+
             <div>
                 <span>Jam Pelajaran</span>
                 <strong>
@@ -83,11 +106,13 @@
             <div class="info-icon">
                 <i class="fas fa-calendar-day"></i>
             </div>
+
             <div>
                 <span>Tanggal Presensi</span>
                 <strong>{{ $tanggalTampilan }}</strong>
             </div>
         </div>
+
     </div>
 
     <div class="presensi-notice">
@@ -132,17 +157,41 @@
             @foreach($siswa as $index => $item)
 
                 @php
-                    $dataPresensi = $presensi->get($item->id);
+                    $idSiswa = (string) $item->id;
 
-                    $statusTerpilih = old(
-                        'status.' . $item->id,
-                        $dataPresensi->status ?? 'hadir'
-                    );
+                    $dataPresensi = $presensi->get($idSiswa);
+                    $izinSiswa = $izinDisetujui->get($idSiswa);
 
-                    $keteranganTerpilih = old(
-                        'keterangan.' . $item->id,
-                        $dataPresensi->keterangan ?? ''
-                    );
+                    if ($izinSiswa) {
+
+                        $jenisIzin = strtolower(
+                            trim($izinSiswa->jenis ?? 'izin')
+                        );
+
+                        $statusTerpilih = $jenisIzin === 'sakit'
+                            ? 'sakit'
+                            : 'izin';
+
+                        $keteranganTerpilih = trim(
+                            $izinSiswa->alasan ?? ''
+                        );
+
+                        if ($keteranganTerpilih === '') {
+                            $keteranganTerpilih = ucfirst($statusTerpilih);
+                        }
+
+                    } else {
+
+                        $statusTerpilih = old(
+                            'status.' . $idSiswa,
+                            $dataPresensi->status ?? 'hadir'
+                        );
+
+                        $keteranganTerpilih = old(
+                            'keterangan.' . $idSiswa,
+                            $dataPresensi->keterangan ?? ''
+                        );
+                    }
                 @endphp
 
                 <div class="siswa-item">
@@ -159,47 +208,73 @@
                         </div>
 
                         <div class="status-wrapper">
-                            <select name="status[{{ $item->id }}]"
-                                    class="presensi-select"
-                                    required>
+
+                            <select
+                                name="status[{{ $idSiswa }}]"
+                                class="presensi-select {{ $izinSiswa ? 'select-locked' : '' }}"
+                                {{ $izinSiswa ? 'disabled' : 'required' }}
+                            >
+
                                 <option value="hadir"
-                                    {{ $statusTerpilih == 'hadir' ? 'selected' : '' }}>
+                                    {{ $statusTerpilih === 'hadir' ? 'selected' : '' }}>
                                     Hadir
                                 </option>
 
                                 <option value="sakit"
-                                    {{ $statusTerpilih == 'sakit' ? 'selected' : '' }}>
+                                    {{ $statusTerpilih === 'sakit' ? 'selected' : '' }}>
                                     Sakit
                                 </option>
 
                                 <option value="izin"
-                                    {{ $statusTerpilih == 'izin' ? 'selected' : '' }}>
+                                    {{ $statusTerpilih === 'izin' ? 'selected' : '' }}>
                                     Izin
                                 </option>
 
                                 <option value="alpa"
-                                    {{ $statusTerpilih == 'alpa' ? 'selected' : '' }}>
+                                    {{ $statusTerpilih === 'alpa' ? 'selected' : '' }}>
                                     Alpa
                                 </option>
+
                             </select>
+
+                            @if($izinSiswa)
+                                <div class="izin-locked-info">
+                                    <i class="fas fa-lock"></i>
+                                    Izin telah disetujui
+                                </div>
+                            @endif
+
                         </div>
 
                     </div>
 
                     <div class="siswa-note">
                         <i class="fas fa-comment-alt"></i>
-                        <input type="text"
-                               name="keterangan[{{ $item->id }}]"
-                               value="{{ $keteranganTerpilih }}"
-                               maxlength="500"
-                               placeholder="Tambahkan keterangan (opsional)">
+
+                        <input
+                            type="text"
+                            name="keterangan[{{ $idSiswa }}]"
+                            value="{{ $keteranganTerpilih }}"
+                            maxlength="500"
+                            placeholder="Tambahkan keterangan (opsional)"
+                            {{ $izinSiswa ? 'readonly' : '' }}
+                            class="{{ $izinSiswa ? 'input-locked' : '' }}"
+                        >
                     </div>
+
+                    @if($izinSiswa)
+                        <div class="izin-reason">
+                            <i class="fas fa-info-circle"></i>
+                            Keterangan berasal dari pengajuan siswa dan tidak dapat diubah.
+                        </div>
+                    @endif
 
                 </div>
 
             @endforeach
 
             <div class="presensi-footer">
+
                 <a href="{{ route('presensi') }}" class="btn-cancel">
                     Batal
                 </a>
@@ -208,6 +283,7 @@
                     <i class="fas fa-save"></i>
                     Simpan Presensi
                 </button>
+
             </div>
 
         </form>
@@ -216,6 +292,7 @@
 
         <div class="empty-siswa">
             <i class="fas fa-user-graduate"></i>
+
             <h3>Belum Ada Siswa</h3>
 
             <p>
@@ -463,6 +540,26 @@
     box-shadow: 0 0 0 3px rgba(37, 99, 235, .08);
 }
 
+.presensi-select.select-locked {
+    background: #f0f6ff;
+    color: #2456a6;
+    border-color: #c7dcfa;
+    font-weight: 700;
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+.izin-locked-info {
+    color: #16834b;
+    font-size: 10px;
+    font-weight: 600;
+    margin-top: 7px;
+}
+
+.izin-locked-info i {
+    margin-right: 4px;
+}
+
 .siswa-note {
     display: flex;
     align-items: center;
@@ -480,6 +577,24 @@
     font-size: 12px;
     outline: none;
     box-sizing: border-box;
+}
+
+.siswa-note input.input-locked {
+    background: #f8fafc;
+    border-color: #dce5f0;
+    color: #475569;
+    cursor: not-allowed;
+}
+
+.izin-reason {
+    margin: 8px 0 0 63px;
+    color: #718096;
+    font-size: 11px;
+}
+
+.izin-reason i {
+    color: #3974ce;
+    margin-right: 4px;
 }
 
 .presensi-footer {
@@ -521,6 +636,12 @@
     background: #fff1f1;
     border: 1px solid #ffd1d1;
     color: #b42318;
+}
+
+.presensi-alert.success {
+    background: #ecfdf3;
+    border: 1px solid #abefc6;
+    color: #067647;
 }
 
 .empty-siswa {
@@ -567,6 +688,10 @@
     }
 
     .siswa-note {
+        margin-left: 45px;
+    }
+
+    .izin-reason {
         margin-left: 45px;
     }
 

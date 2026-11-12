@@ -663,7 +663,7 @@
                     <div class="form-group">
 
                         <label id="labelIdentitas" for="identitas">
-                            NISN
+                            NIS
                         </label>
 
                         <div class="input-wrapper">

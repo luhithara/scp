@@ -1,3 +1,4 @@
+
 {{-- =========================================================
      SCP - DATA SISWA WAKA
      File: resources/views/waka/siswa.blade.php
@@ -15,12 +16,17 @@
     $dataSiswa = $dataSiswa ?? collect();
     $daftarKelas = $daftarKelas ?? collect();
     $search = $search ?? request('search', '');
+
+    $kelompokSiswa = collect($dataSiswa)
+        ->groupBy(function ($siswa) {
+            return $siswa->kelasid ?? 'tanpa-kelas';
+        })
+        ->sortBy(function ($siswaDalamKelas) {
+            return $siswaDalamKelas->first()->namakelas ?? 'ZZZ';
+        });
 @endphp
 
-{{-- =========================================================
-     HEADER
-========================================================= --}}
-
+{{-- HEADER --}}
 <div class="siswa-header">
     <div>
         <h1>Data Siswa</h1>
@@ -28,10 +34,7 @@
     </div>
 </div>
 
-{{-- =========================================================
-     NOTIFIKASI
-========================================================= --}}
-
+{{-- NOTIFIKASI --}}
 @if(session('success'))
     <div class="siswa-alert alert-success">
         <i class="fa-solid fa-circle-check"></i>
@@ -83,7 +86,6 @@
 {{-- =========================================================
      STATISTIK
 ========================================================= --}}
-
 <div class="siswa-stats">
 
     <div class="siswa-stat-card">
@@ -92,7 +94,6 @@
             <strong>{{ number_format($jumlahSiswa) }}</strong>
             <small>Total siswa terdaftar</small>
         </div>
-
         <div class="stat-icon">
             <i class="fa-solid fa-users"></i>
         </div>
@@ -104,7 +105,6 @@
             <strong>{{ $daftarKelas->count() }}</strong>
             <small>Kelas tersedia</small>
         </div>
-
         <div class="stat-icon">
             <i class="fa-solid fa-school"></i>
         </div>
@@ -113,10 +113,9 @@
     <div class="siswa-stat-card">
         <div>
             <span class="stat-label">Data Ditampilkan</span>
-            <strong>{{ $dataSiswa->count() }}</strong>
+            <strong>{{ collect($dataSiswa)->count() }}</strong>
             <small>Hasil pencarian saat ini</small>
         </div>
-
         <div class="stat-icon">
             <i class="fa-solid fa-clipboard-list"></i>
         </div>
@@ -127,14 +126,11 @@
 {{-- =========================================================
      TOOLBAR
 ========================================================= --}}
-
 <div class="siswa-toolbar">
 
     <div>
         <h3>Kelola Data Siswa</h3>
-        <p>
-            Tambahkan siswa, import data, atau cari siswa yang terdaftar.
-        </p>
+        <p>Tambahkan siswa, import data, atau cari siswa yang terdaftar.</p>
     </div>
 
     <div class="siswa-toolbar-actions">
@@ -164,7 +160,6 @@
 {{-- =========================================================
      MODAL IMPORT DATA SISWA
 ========================================================= --}}
-
 <div id="modalImportSiswa" class="import-modal-siswa">
 
     <div class="import-modal-siswa-content">
@@ -179,9 +174,7 @@
 
                 <div>
                     <h3>Import Data Siswa</h3>
-                    <p>
-                        Masukkan file untuk menambahkan data siswa secara otomatis.
-                    </p>
+                    <p>Import daftar siswa dari file Excel secara otomatis.</p>
                 </div>
 
             </div>
@@ -214,15 +207,9 @@
                     </div>
 
                     <h4>Pilih File Data Siswa</h4>
+                    <p>Pilih file Excel dari perangkatmu.</p>
 
-                    <p>
-                        Pilih file Excel, CSV, atau PDF dari perangkatmu.
-                    </p>
-
-                    <label
-                        for="fileImportSiswa"
-                        class="import-select-siswa"
-                    >
+                    <label for="fileImportSiswa" class="import-select-siswa">
                         <i class="fa-solid fa-folder-open"></i>
                         Pilih File
                     </label>
@@ -231,15 +218,12 @@
                         type="file"
                         id="fileImportSiswa"
                         name="file"
-                        accept=".xlsx,.xls,.csv,.pdf"
+                        accept=".xlsx,.xls,.csv"
                         required
                         hidden
                     >
 
-                    <div
-                        id="namaFileImportSiswa"
-                        class="import-file-siswa-name"
-                    >
+                    <div id="namaFileImportSiswa" class="import-file-siswa-name">
                         Belum ada file yang dipilih
                     </div>
 
@@ -260,68 +244,50 @@
                     </div>
 
                     <ul>
-                        <li>
-                            Format file:
-                            <b>.xlsx, .xls, .csv, dan .pdf</b>.
-                        </li>
-
-                        <li>
-                            Ukuran maksimal file:
-                            <b>10 MB</b>.
-                        </li>
-
-                        <li>
-                            Kolom wajib:
-                            <b>nisn, nama, kelas</b>.
-                        </li>
-
-                        <li>
-                            Kelas harus sudah tersedia di database SCP.
-                        </li>
-
-                        <li>
-                            Pastikan NISN dan data siswa belum terdaftar sebelumnya.
-                        </li>
+                        <li>Format file: <b>.xlsx, .xls, atau .csv</b>.</li>
+                        <li>Ukuran maksimal: <b>20 MB</b>.</li>
+                        <li>File Excel dapat berisi beberapa sheet kelas.</li>
+                        <li>Data Excel menggunakan kolom NIS, NAMA SISWA, dan L / P.</li>
+                        <li>Nama kelas dibaca dari keterangan KELAS pada sheet.</li>
+                        <li>NIS yang sudah terdaftar tidak akan dibuat ulang.</li>
+                        <li>Akun login siswa dibuat otomatis menggunakan NIS.</li>
                     </ul>
 
                 </div>
 
                 <div class="import-example-siswa">
 
-                    <strong>Contoh susunan data</strong>
+                    <strong>Format file Excel yang didukung</strong>
 
                     <div class="import-example-siswa-table">
-
                         <table>
                             <thead>
                                 <tr>
-                                    <th>nisn</th>
-                                    <th>nama</th>
-                                    <th>kelas</th>
+                                    <th>NIS</th>
+                                    <th>NAMA SISWA</th>
+                                    <th>L / P</th>
                                 </tr>
                             </thead>
 
                             <tbody>
                                 <tr>
-                                    <td>0091234567</td>
+                                    <td>17770</td>
                                     <td>Nama Siswa</td>
-                                    <td>XI RPL 1</td>
+                                    <td>P</td>
                                 </tr>
-
                                 <tr>
-                                    <td>0091234568</td>
+                                    <td>17771</td>
                                     <td>Nama Siswa 2</td>
-                                    <td>XI RPL 1</td>
+                                    <td>L</td>
                                 </tr>
                             </tbody>
                         </table>
-
                     </div>
 
                     <p>
-                        Kolom tambahan seperti jenis kelamin, tempat lahir,
-                        tanggal lahir, nomor telepon, dan alamat dapat disertakan
-                        jika didukung oleh controller import.
+                        Sistem membaca nama kelas dari masing-masing bagian
+                        data Excel sehingga siswa dapat dikelompokkan
+                        berdasarkan kelasnya.
                     </p>
 
                 </div>
@@ -336,10 +302,7 @@
                         Batal
                     </button>
 
-                    <button
-                        type="submit"
-                        class="btn-import-siswa"
-                    >
+                    <button type="submit" class="btn-import-siswa">
                         <i class="fa-solid fa-upload"></i>
                         Import Sekarang
                     </button>
@@ -357,7 +320,6 @@
 {{-- =========================================================
      MODAL TAMBAH SISWA
 ========================================================= --}}
-
 <div id="modalTambahSiswa" class="modal-siswa">
 
     <div class="modal-siswa-content">
@@ -370,9 +332,7 @@
                     Tambah Data Siswa
                 </h3>
 
-                <p>
-                    Lengkapi informasi siswa dan akun login.
-                </p>
+                <p>Lengkapi informasi siswa dan akun login.</p>
             </div>
 
             <button
@@ -396,36 +356,24 @@
 
                 <div class="form-siswa-grid">
 
-                    {{-- NISN --}}
                     <div class="form-siswa-group">
-
-                        <label for="nisn">
-                            NISN <span>*</span>
-                        </label>
-
+                        <label for="nis">NIS <span>*</span></label>
                         <input
                             type="text"
-                            id="nisn"
-                            name="nisn"
-                            value="{{ old('nisn') }}"
-                            placeholder="Masukkan NISN"
-                            maxlength="20"
+                            id="nis"
+                            name="nis"
+                            value="{{ old('nis') }}"
+                            placeholder="Masukkan NIS siswa"
+                            maxlength="30"
                             required
                         >
-
-                        @error('nisn')
+                        @error('nis')
                             <small class="field-error">{{ $message }}</small>
                         @enderror
-
                     </div>
 
-                    {{-- NAMA --}}
                     <div class="form-siswa-group">
-
-                        <label for="nama">
-                            Nama Lengkap <span>*</span>
-                        </label>
-
+                        <label for="nama">Nama Lengkap <span>*</span></label>
                         <input
                             type="text"
                             id="nama"
@@ -435,60 +383,30 @@
                             maxlength="100"
                             required
                         >
-
                         @error('nama')
                             <small class="field-error">{{ $message }}</small>
                         @enderror
-
                     </div>
 
-                    {{-- JENIS KELAMIN --}}
                     <div class="form-siswa-group">
-
-                        <label for="jeniskelamin">
-                            Jenis Kelamin <span>*</span>
-                        </label>
-
-                        <select
-                            id="jeniskelamin"
-                            name="jeniskelamin"
-                            required
-                        >
+                        <label for="jeniskelamin">Jenis Kelamin <span>*</span></label>
+                        <select id="jeniskelamin" name="jeniskelamin" required>
                             <option value="">-- Pilih Jenis Kelamin --</option>
-
-                            <option
-                                value="L"
-                                {{ old('jeniskelamin') == 'L' ? 'selected' : '' }}
-                            >
+                            <option value="L" {{ old('jeniskelamin') == 'L' ? 'selected' : '' }}>
                                 Laki-laki
                             </option>
-
-                            <option
-                                value="P"
-                                {{ old('jeniskelamin') == 'P' ? 'selected' : '' }}
-                            >
+                            <option value="P" {{ old('jeniskelamin') == 'P' ? 'selected' : '' }}>
                                 Perempuan
                             </option>
                         </select>
-
                         @error('jeniskelamin')
                             <small class="field-error">{{ $message }}</small>
                         @enderror
-
                     </div>
 
-                    {{-- KELAS --}}
                     <div class="form-siswa-group">
-
-                        <label for="kelasid">
-                            Kelas <span>*</span>
-                        </label>
-
-                        <select
-                            id="kelasid"
-                            name="kelasid"
-                            required
-                        >
+                        <label for="kelasid">Kelas <span>*</span></label>
+                        <select id="kelasid" name="kelasid" required>
                             <option value="">-- Pilih Kelas --</option>
 
                             @foreach($daftarKelas as $kelas)
@@ -497,25 +415,17 @@
                                     {{ old('kelasid') == $kelas->id ? 'selected' : '' }}
                                 >
                                     {{ $kelas->namakelas }}
-                                    ({{ $kelas->namajurusan }})
+                                    ({{ $kelas->namajurusan ?? '-' }})
                                 </option>
                             @endforeach
-
                         </select>
-
                         @error('kelasid')
                             <small class="field-error">{{ $message }}</small>
                         @enderror
-
                     </div>
 
-                    {{-- TEMPAT LAHIR --}}
                     <div class="form-siswa-group">
-
-                        <label for="tempatlahir">
-                            Tempat Lahir
-                        </label>
-
+                        <label for="tempatlahir">Tempat Lahir</label>
                         <input
                             type="text"
                             id="tempatlahir"
@@ -524,32 +434,20 @@
                             placeholder="Tempat lahir"
                             maxlength="100"
                         >
-
                     </div>
 
-                    {{-- TANGGAL LAHIR --}}
                     <div class="form-siswa-group">
-
-                        <label for="tanggallahir">
-                            Tanggal Lahir
-                        </label>
-
+                        <label for="tanggallahir">Tanggal Lahir</label>
                         <input
                             type="date"
                             id="tanggallahir"
                             name="tanggallahir"
                             value="{{ old('tanggallahir') }}"
                         >
-
                     </div>
 
-                    {{-- TELEPON --}}
                     <div class="form-siswa-group">
-
-                        <label for="nomortelepon">
-                            Nomor Telepon
-                        </label>
-
+                        <label for="nomortelepon">Nomor Telepon</label>
                         <input
                             type="text"
                             id="nomortelepon"
@@ -558,16 +456,10 @@
                             placeholder="08xxxxxxxxxx"
                             maxlength="20"
                         >
-
                     </div>
 
-                    {{-- EMAIL --}}
                     <div class="form-siswa-group">
-
-                        <label for="email">
-                            Email Login (Opsional)
-                        </label>
-
+                        <label for="email">Email Login (Opsional)</label>
                         <input
                             type="email"
                             id="email"
@@ -575,64 +467,43 @@
                             value="{{ old('email') }}"
                             placeholder="Email siswa"
                         >
-
-                        <small>
-                            Jika kosong, email login dibuat otomatis dari NISN.
-                        </small>
-
+                        <small>Jika kosong, email login dibuat otomatis oleh sistem.</small>
                         @error('email')
                             <small class="field-error">{{ $message }}</small>
                         @enderror
-
                     </div>
 
-                    {{-- PASSWORD --}}
                     <div class="form-siswa-group">
-
-                        <label for="password">
-                            Password Login (Opsional)
-                        </label>
-
+                        <label for="password">Password Login (Opsional)</label>
                         <input
                             type="password"
                             id="password"
                             name="password"
-                            placeholder="Kosongkan untuk memakai NISN"
+                            placeholder="Kosongkan untuk memakai NIS"
                         >
-
-                        <small>
-                            Jika kosong, password awal menggunakan NISN.
-                        </small>
-
+                        <small>Jika kosong, password awal menggunakan NIS.</small>
                         @error('password')
                             <small class="field-error">{{ $message }}</small>
                         @enderror
-
                     </div>
 
-                    {{-- ALAMAT --}}
                     <div class="form-siswa-group full-width">
-
-                        <label for="alamat">
-                            Alamat
-                        </label>
-
+                        <label for="alamat">Alamat</label>
                         <textarea
                             id="alamat"
                             name="alamat"
                             rows="3"
                             placeholder="Masukkan alamat siswa"
                         >{{ old('alamat') }}</textarea>
-
                     </div>
 
                 </div>
 
                 <div class="modal-form-info">
                     <i class="fa-solid fa-circle-info"></i>
-
                     <span>
-                        Akun login siswa akan dibuat otomatis setelah data berhasil disimpan.
+                        Akun login siswa akan dibuat otomatis setelah data berhasil
+                        disimpan. Identitas login siswa menggunakan NIS.
                     </span>
                 </div>
 
@@ -646,10 +517,7 @@
                         Batal
                     </button>
 
-                    <button
-                        type="submit"
-                        class="btn-primary-siswa"
-                    >
+                    <button type="submit" class="btn-primary-siswa">
                         <i class="fa-solid fa-floppy-disk"></i>
                         Simpan Data Siswa
                     </button>
@@ -665,9 +533,9 @@
 </div>
 
 {{-- =========================================================
-     TABEL DATA SISWA
+     DAFTAR SISWA PER KELAS
+     SETIAP KELAS BERUPA BUTTON
 ========================================================= --}}
-
 <div class="siswa-card">
 
     <div class="siswa-card-header siswa-table-header">
@@ -675,12 +543,9 @@
         <div>
             <h3>
                 <i class="fa-solid fa-users"></i>
-                Daftar Siswa
+                Daftar Siswa per Kelas
             </h3>
-
-            <p>
-                Data siswa yang terdaftar di sistem SCP.
-            </p>
+            <p>Klik tombol kelas untuk melihat daftar siswanya.</p>
         </div>
 
         <form
@@ -691,12 +556,11 @@
 
             <div class="search-siswa-input">
                 <i class="fa-solid fa-magnifying-glass"></i>
-
                 <input
                     type="text"
                     name="search"
                     value="{{ $search }}"
-                    placeholder="Cari nama, NISN, kelas..."
+                    placeholder="Cari nama, NIS, kelas..."
                 >
             </div>
 
@@ -705,10 +569,7 @@
             </button>
 
             @if($search !== '')
-                <a
-                    href="{{ route('waka.siswa') }}"
-                    class="btn-reset-siswa"
-                >
+                <a href="{{ route('waka.siswa') }}" class="btn-reset-siswa">
                     Reset
                 </a>
             @endif
@@ -717,135 +578,183 @@
 
     </div>
 
-    <div class="siswa-table-wrapper">
+    <div class="siswa-per-kelas">
 
-        <table class="siswa-table">
+        @forelse($kelompokSiswa as $kelasid => $siswaDalamKelas)
 
-            <thead>
-                <tr>
-                    <th>No.</th>
-                    <th>NISN</th>
-                    <th>Nama Siswa</th>
-                    <th>Jenis Kelamin</th>
-                    <th>Kelas</th>
-                    <th>Jurusan</th>
-                    <th>Aksi</th>
-                </tr>
-            </thead>
+            @php
+                $kelasPertama = $siswaDalamKelas->first();
+                $namaKelas = $kelasPertama->namakelas ?? 'Belum Ada Kelas';
+                $namaJurusan = $kelasPertama->namajurusan ?? '-';
+                $panelId = 'panel-kelas-' . $loop->index;
+            @endphp
 
-            <tbody>
+            <div class="kelas-siswa-card">
 
-                @forelse($dataSiswa as $index => $siswa)
+                {{-- TOMBOL KELAS --}}
+                <button
+                    type="button"
+                    class="kelas-siswa-button"
+                    aria-expanded="false"
+                    aria-controls="{{ $panelId }}"
+                    onclick="toggleSiswaKelas(this, '{{ $panelId }}')"
+                >
 
-                    <tr>
+                    <div class="kelas-siswa-identitas">
 
-                        <td>{{ $index + 1 }}</td>
+                        <div class="kelas-siswa-icon">
+                            <i class="fa-solid fa-school"></i>
+                        </div>
 
-                        <td>
-                            <span class="nisn-badge">
-                                {{ $siswa->nisn }}
-                            </span>
-                        </td>
+                        <div class="kelas-siswa-info">
+                            <h4>{{ $namaKelas }}</h4>
+                            <span>Jurusan {{ $namaJurusan }}</span>
+                        </div>
 
-                        <td>
-                            <div class="nama-siswa-cell">
+                    </div>
 
-                                <div class="avatar-siswa">
-                                    {{ strtoupper(substr($siswa->nama ?? 'S', 0, 1)) }}
-                                </div>
+                    <div class="kelas-siswa-kanan">
 
-                                <strong>{{ $siswa->nama }}</strong>
+                        <div class="kelas-siswa-jumlah">
+                            <strong>{{ $siswaDalamKelas->count() }}</strong>
+                            <span>Siswa</span>
+                        </div>
 
-                            </div>
-                        </td>
+                        <div class="kelas-siswa-chevron">
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </div>
 
-                        <td>
-                            @if($siswa->jeniskelamin == 'L')
-                                Laki-laki
-                            @elseif($siswa->jeniskelamin == 'P')
-                                Perempuan
-                            @else
-                                -
-                            @endif
-                        </td>
+                    </div>
 
-                        <td>{{ $siswa->namakelas ?? '-' }}</td>
+                </button>
 
-                        <td>{{ $siswa->namajurusan ?? '-' }}</td>
+                {{-- TABEL SISWA: AWALNYA TERTUTUP --}}
+                <div
+                    id="{{ $panelId }}"
+                    class="kelas-siswa-panel"
+                    hidden
+                >
 
-                        <td>
+                    <div class="siswa-table-wrapper">
 
-                            <div class="aksi-siswa">
+                        <table class="siswa-table">
 
-                                <a
-                                    href="{{ route('waka.siswa.edit', $siswa->id) }}"
-                                    class="btn-aksi edit"
-                                    title="Edit siswa"
-                                >
-                                    <i class="fa-solid fa-pen"></i>
-                                </a>
+                            <thead>
+                                <tr>
+                                    <th>No.</th>
+                                    <th>NIS</th>
+                                    <th>Nama Siswa</th>
+                                    <th>Jenis Kelamin</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
 
-                                <form
-                                    action="{{ route('waka.siswa.hapus', $siswa->id) }}"
-                                    method="POST"
-                                    onsubmit="return confirm('Yakin ingin menghapus data siswa ini?')"
-                                >
+                            <tbody>
 
-                                    @csrf
-                                    @method('DELETE')
+                                @foreach($siswaDalamKelas as $index => $siswa)
 
-                                    <button
-                                        type="submit"
-                                        class="btn-aksi delete"
-                                        title="Hapus siswa"
-                                    >
-                                        <i class="fa-solid fa-trash"></i>
-                                    </button>
+                                    <tr>
 
-                                </form>
+                                        <td>{{ $index + 1 }}</td>
 
-                            </div>
+                                        <td>
+                                            <span class="nisn-badge">
+                                                {{ $siswa->nis ?? '-' }}
+                                            </span>
+                                        </td>
 
-                        </td>
+                                        <td>
+                                            <div class="nama-siswa-cell">
+                                                <div class="avatar-siswa">
+                                                    {{ strtoupper(substr($siswa->nama ?? 'S', 0, 1)) }}
+                                                </div>
+                                                <strong>{{ $siswa->nama }}</strong>
+                                            </div>
+                                        </td>
 
-                    </tr>
+                                        <td>
+                                            @if($siswa->jeniskelamin == 'L')
+                                                Laki-laki
+                                            @elseif($siswa->jeniskelamin == 'P')
+                                                Perempuan
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
 
-                @empty
+                                        <td>
+                                            <div class="aksi-siswa">
 
-                    <tr>
-                        <td colspan="7">
+                                                <a
+                                                    href="{{ route('waka.siswa.edit', $siswa->id) }}"
+                                                    class="btn-aksi edit"
+                                                    title="Edit siswa"
+                                                >
+                                                    <i class="fa-solid fa-pen"></i>
+                                                </a>
 
-                            <div class="empty-siswa">
+                                                <form
+                                                    action="{{ route('waka.siswa.hapus', $siswa->id) }}"
+                                                    method="POST"
+                                                    onsubmit="return confirm('Yakin ingin menghapus data siswa ini?')"
+                                                >
+                                                    @csrf
+                                                    @method('DELETE')
 
-                                <div class="empty-siswa-icon">
-                                    <i class="fa-solid fa-users"></i>
-                                </div>
+                                                    <button
+                                                        type="submit"
+                                                        class="btn-aksi delete"
+                                                        title="Hapus siswa"
+                                                    >
+                                                        <i class="fa-solid fa-trash"></i>
+                                                    </button>
+                                                </form>
 
-                                <strong>
-                                    {{ $search ? 'Data Tidak Ditemukan' : 'Belum Ada Data Siswa' }}
-                                </strong>
+                                            </div>
+                                        </td>
 
-                                <p>
-                                    {{ $search
-                                        ? 'Tidak ada siswa yang sesuai dengan pencarian.'
-                                        : 'Silakan tambahkan data siswa terlebih dahulu.' }}
-                                </p>
+                                    </tr>
 
-                            </div>
+                                @endforeach
 
-                        </td>
-                    </tr>
+                            </tbody>
 
-                @endforelse
+                        </table>
 
-            </tbody>
+                    </div>
 
-        </table>
+                </div>
+
+            </div>
+
+        @empty
+
+            <div class="empty-siswa">
+
+                <div class="empty-siswa-icon">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+
+                <strong>
+                    {{ $search ? 'Data Tidak Ditemukan' : 'Belum Ada Data Siswa' }}
+                </strong>
+
+                <p>
+                    {{ $search
+                        ? 'Tidak ada siswa yang sesuai dengan pencarian.'
+                        : 'Silakan tambahkan atau import data siswa terlebih dahulu.' }}
+                </p>
+
+            </div>
+
+        @endforelse
 
     </div>
 
     <div class="siswa-table-footer">
-        Menampilkan {{ $dataSiswa->count() }} dari {{ $jumlahSiswa }} siswa.
+        Menampilkan {{ collect($dataSiswa)->count() }} dari
+        {{ $jumlahSiswa }} siswa dalam
+        {{ $kelompokSiswa->count() }} kelompok kelas.
     </div>
 
 </div>
@@ -855,7 +764,6 @@
 {{-- =========================================================
      CSS
 ========================================================= --}}
-
 @push('styles')
 
 <style>
@@ -997,8 +905,6 @@
     flex-wrap:wrap;
 }
 
-/* BUTTON */
-
 .btn-primary-siswa,
 .btn-import-siswa,
 .btn-secondary-siswa,
@@ -1050,7 +956,7 @@
     background:#e2e8f0;
 }
 
-/* CARD */
+/* CARD UTAMA */
 
 .siswa-card {
     margin-bottom:20px;
@@ -1087,7 +993,7 @@
     font-size:12px;
 }
 
-/* SEARCH */
+/* PENCARIAN */
 
 .search-siswa-form {
     display:flex;
@@ -1134,6 +1040,166 @@
     color:#475569;
 }
 
+/* =========================================================
+   TOMBOL KELAS
+========================================================= */
+
+.siswa-per-kelas {
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    padding:20px;
+}
+
+.kelas-siswa-card {
+    overflow:hidden;
+    border:1px solid #e2e8f0;
+    border-radius:13px;
+    background:#fff;
+    transition:border-color .2s, box-shadow .2s;
+}
+
+.kelas-siswa-card:hover {
+    border-color:#bfdbfe;
+    box-shadow:0 3px 12px rgba(37,99,235,.06);
+}
+
+/* Tombol kelas */
+
+.kelas-siswa-button {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:15px;
+    width:100%;
+    padding:16px 19px;
+    border:0;
+    background:#f8fbff;
+    text-align:left;
+    cursor:pointer;
+    transition:background .2s;
+}
+
+.kelas-siswa-button:hover {
+    background:#eff6ff;
+}
+
+.kelas-siswa-button[aria-expanded="true"] {
+    background:#eff6ff;
+    border-bottom:1px solid #dbeafe;
+}
+
+.kelas-siswa-identitas {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    min-width:0;
+}
+
+.kelas-siswa-icon {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:43px;
+    height:43px;
+    flex-shrink:0;
+    border-radius:11px;
+    background:#eaf3ff;
+    color:#2563eb;
+    font-size:17px;
+}
+
+.kelas-siswa-info {
+    min-width:0;
+}
+
+.kelas-siswa-info h4 {
+    margin:0;
+    color:#173b67;
+    font-size:15px;
+    font-weight:700;
+}
+
+.kelas-siswa-info span {
+    display:block;
+    margin-top:4px;
+    color:#718096;
+    font-size:11px;
+}
+
+.kelas-siswa-kanan {
+    display:flex;
+    align-items:center;
+    gap:13px;
+    flex-shrink:0;
+}
+
+.kelas-siswa-jumlah {
+    display:flex;
+    align-items:center;
+    gap:7px;
+    padding:7px 12px;
+    border-radius:8px;
+    background:#eff6ff;
+    color:#1d4ed8;
+}
+
+.kelas-siswa-jumlah strong {
+    font-size:15px;
+    font-weight:700;
+}
+
+.kelas-siswa-jumlah span {
+    font-size:11px;
+    font-weight:600;
+}
+
+.kelas-siswa-chevron {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:32px;
+    height:32px;
+    border-radius:8px;
+    background:#fff;
+    color:#64748b;
+    transition:transform .2s, background .2s;
+}
+
+.kelas-siswa-button[aria-expanded="true"] .kelas-siswa-chevron {
+    transform:rotate(180deg);
+    background:#dbeafe;
+    color:#1d4ed8;
+}
+
+/* Panel tabel */
+
+.kelas-siswa-panel {
+    width:100%;
+    background:#fff;
+}
+
+.kelas-siswa-panel[hidden] {
+    display:none !important;
+}
+
+.kelas-siswa-panel:not([hidden]) {
+    display:block;
+    animation:panelKelasMasuk .2s ease;
+}
+
+@keyframes panelKelasMasuk {
+    from {
+        opacity:0;
+        transform:translateY(-5px);
+    }
+
+    to {
+        opacity:1;
+        transform:translateY(0);
+    }
+}
+
 /* TABEL */
 
 .siswa-table-wrapper {
@@ -1143,7 +1209,7 @@
 
 .siswa-table {
     width:100%;
-    min-width:850px;
+    min-width:650px;
     border-collapse:collapse;
 }
 
@@ -1247,7 +1313,7 @@
     filter:brightness(.95);
 }
 
-/* EMPTY STATE */
+/* DATA KOSONG */
 
 .empty-siswa {
     padding:45px 15px;
@@ -1321,7 +1387,6 @@
         opacity:0;
         transform:translateY(12px);
     }
-
     to {
         opacity:1;
         transform:translateY(0);
@@ -1726,9 +1791,7 @@
     border-top:1px solid #edf2f7;
 }
 
-/* =========================================================
-   RESPONSIVE
-========================================================= */
+/* RESPONSIVE */
 
 @media(max-width:900px) {
 
@@ -1825,6 +1888,40 @@
         width:100%;
     }
 
+    .siswa-per-kelas {
+        padding:12px;
+        gap:10px;
+    }
+
+    .kelas-siswa-button {
+        padding:13px;
+    }
+
+    .kelas-siswa-info h4 {
+        font-size:13px;
+    }
+
+    .kelas-siswa-kanan {
+        gap:7px;
+    }
+
+    .kelas-siswa-jumlah {
+        padding:6px 8px;
+    }
+
+    .kelas-siswa-jumlah strong {
+        font-size:13px;
+    }
+
+    .kelas-siswa-jumlah span {
+        font-size:10px;
+    }
+
+    .kelas-siswa-chevron {
+        width:28px;
+        height:28px;
+    }
+
 }
 
 </style>
@@ -1834,10 +1931,29 @@
 {{-- =========================================================
      JAVASCRIPT
 ========================================================= --}}
-
 @push('scripts')
 
 <script>
+
+/* =========================================================
+   BUKA / TUTUP DAFTAR SISWA PER KELAS
+========================================================= */
+
+function toggleSiswaKelas(button, panelId)
+{
+    const panel = document.getElementById(panelId);
+
+    if (!panel || !button) {
+        return;
+    }
+
+    const sedangTerbuka = button.getAttribute('aria-expanded') === 'true';
+
+    button.setAttribute('aria-expanded', sedangTerbuka ? 'false' : 'true');
+
+    panel.hidden = sedangTerbuka;
+
+}
 
 /* =========================================================
    MODAL TAMBAH SISWA
@@ -1860,7 +1976,10 @@ function tutupModalSiswa()
     if (!modal) return;
 
     modal.classList.remove('aktif');
-    document.body.style.overflow = '';
+
+    if (!document.querySelector('.import-modal-siswa.show')) {
+        document.body.style.overflow = '';
+    }
 }
 
 /* =========================================================
@@ -1884,11 +2003,14 @@ function tutupModalImportSiswa()
     if (!modal) return;
 
     modal.classList.remove('show');
-    document.body.style.overflow = '';
+
+    if (!document.querySelector('.modal-siswa.aktif')) {
+        document.body.style.overflow = '';
+    }
 }
 
 /* =========================================================
-   NAMA FILE IMPORT
+   EVENT DOM
 ========================================================= */
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -1934,7 +2056,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    /* BUKA KEMBALI MODAL JIKA VALIDASI GAGAL */
+    /* BUKA MODAL KEMBALI JIKA VALIDASI GAGAL */
 
     @if($errors->has('file'))
         bukaModalImportSiswa();
@@ -1944,9 +2066,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 
-/* =========================================================
-   TOMBOL ESCAPE
-========================================================= */
+/* TOMBOL ESCAPE */
 
 document.addEventListener('keydown', function (event) {
 

@@ -1,7 +1,6 @@
 {{-- =========================================================
      SCP - DATA GURU WAKA
-     File:
-     resources/views/waka/guru.blade.php
+     File: resources/views/waka/guru.blade.php
 ========================================================= --}}
 
 @extends('layouts.app')
@@ -13,65 +12,37 @@
 
 @php
     $dataGuru = $dataGuru ?? collect();
-    $sebaranMapel = $sebaranMapel ?? collect();
-
-    $totalGuru = $totalGuru ?? 0;
-    $guruDenganMapel = $guruDenganMapel ?? 0;
-    $guruTanpaMapel = $guruTanpaMapel ?? 0;
-    $totalMapelDiampu = $totalMapelDiampu ?? 0;
-
-    $nilaiMaksimalMapel = $sebaranMapel->max('total_guru') ?: 1;
+    $kataKunci = $kataKunci ?? request('cari', '');
 @endphp
 
 <div class="guru-page">
 
-    {{-- =====================================================
-         HEADER
-    ====================================================== --}}
-
+    {{-- HEADER --}}
     <div class="page-header">
-
         <div>
             <h1>Data Guru</h1>
-            <p>
-                Kelola data guru dan akun login guru dalam sistem School Class Progress.
-            </p>
+            <p>Kelola data guru dan akun login guru dalam sistem School Class Progress.</p>
         </div>
 
         <div class="header-actions">
-
             <a href="{{ route('waka.data') }}" class="btn btn-secondary">
                 <i class="fa-solid fa-arrow-left"></i>
                 Kembali
             </a>
 
-            <button
-                type="button"
-                class="btn btn-import"
-                onclick="bukaModalImportGuru()"
-            >
+            <button type="button" class="btn btn-import" onclick="bukaModalImportGuru()">
                 <i class="fa-solid fa-file-import"></i>
                 Import Data
             </button>
 
-            <button
-                type="button"
-                class="btn btn-primary"
-                onclick="bukaModalGuru()"
-            >
+            <button type="button" class="btn btn-primary" onclick="bukaModalGuru()">
                 <i class="fa-solid fa-plus"></i>
                 Tambah Guru
             </button>
-
         </div>
-
     </div>
 
-
-    {{-- =====================================================
-         NOTIFIKASI
-    ====================================================== --}}
-
+    {{-- NOTIFIKASI --}}
     @if(session('success'))
         <div class="alert alert-success">
             <i class="fa-solid fa-circle-check"></i>
@@ -96,10 +67,8 @@
     @if(session('import_errors'))
         <div class="alert alert-danger">
             <i class="fa-solid fa-circle-exclamation"></i>
-
             <div>
                 <strong>Beberapa data gagal diimpor:</strong>
-
                 <ul class="error-list">
                     @foreach(session('import_errors') as $importError)
                         <li>{{ $importError }}</li>
@@ -112,10 +81,8 @@
     @if($errors->any())
         <div class="alert alert-danger">
             <i class="fa-solid fa-circle-exclamation"></i>
-
             <div>
                 <strong>Data belum bisa disimpan.</strong>
-
                 <ul class="error-list">
                     @foreach($errors->all() as $error)
                         <li>{{ $error }}</li>
@@ -125,191 +92,24 @@
         </div>
     @endif
 
-
-    {{-- =====================================================
-         STATISTIK GURU
-    ====================================================== --}}
-
-    <div class="stats-grid">
-
-        <div class="stat-card">
-            <div class="stat-card-top">
-                <div>
-                    <div class="stat-label">Total Guru</div>
-                    <div class="stat-number">
-                        {{ number_format($totalGuru, 0, ',', '.') }}
-                    </div>
-                    <div class="stat-description">
-                        Seluruh guru terdaftar
-                    </div>
-                </div>
-
-                <div class="stat-icon blue">
-                    <i class="fa-solid fa-chalkboard-user"></i>
-                </div>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-card-top">
-                <div>
-                    <div class="stat-label">Guru Memiliki Mapel</div>
-                    <div class="stat-number">
-                        {{ number_format($guruDenganMapel, 0, ',', '.') }}
-                    </div>
-                    <div class="stat-description">
-                        Guru dengan penugasan mapel
-                    </div>
-                </div>
-
-                <div class="stat-icon green">
-                    <i class="fa-solid fa-book-open"></i>
-                </div>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-card-top">
-                <div>
-                    <div class="stat-label">Guru Belum Memiliki Mapel</div>
-                    <div class="stat-number">
-                        {{ number_format($guruTanpaMapel, 0, ',', '.') }}
-                    </div>
-                    <div class="stat-description">
-                        Belum memiliki penugasan mapel
-                    </div>
-                </div>
-
-                <div class="stat-icon orange">
-                    <i class="fa-solid fa-user-clock"></i>
-                </div>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-card-top">
-                <div>
-                    <div class="stat-label">Mapel Diampu</div>
-                    <div class="stat-number">
-                        {{ number_format($totalMapelDiampu, 0, ',', '.') }}
-                    </div>
-                    <div class="stat-description">
-                        Mapel yang memiliki guru pengampu
-                    </div>
-                </div>
-
-                <div class="stat-icon purple">
-                    <i class="fa-solid fa-book"></i>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-
-    {{-- =====================================================
-         GRAFIK SEBARAN MAPEL
-    ====================================================== --}}
-
+    {{-- PENCARIAN --}}
     <div class="card">
-
-        <div class="card-header">
-            <div>
-                <h3>Sebaran Guru Berdasarkan Mata Pelajaran</h3>
-                <p>
-                    Jumlah guru yang terhubung dengan setiap mata pelajaran.
-                </p>
-            </div>
-
-            <div class="chart-total">
-                {{ $sebaranMapel->count() }} Mapel
-            </div>
-        </div>
-
-        <div class="card-body">
-
-            @if($sebaranMapel->count() > 0)
-
-                <div class="mapel-chart">
-
-                    @foreach($sebaranMapel as $mapel)
-
-                        @php
-                            $persentase = ($mapel->total_guru / $nilaiMaksimalMapel) * 100;
-                        @endphp
-
-                        <div class="chart-item">
-
-                            <div class="chart-info">
-                                <span class="chart-name">
-                                    {{ $mapel->namamapel }}
-                                </span>
-
-                                <strong class="chart-value">
-                                    {{ $mapel->total_guru }} guru
-                                </strong>
-                            </div>
-
-                            <div class="chart-track">
-                                <div
-                                    class="chart-bar"
-                                    style="width: {{ $persentase }}%;"
-                                ></div>
-                            </div>
-
-                        </div>
-
-                    @endforeach
-
-                </div>
-
-            @else
-
-                <div class="chart-empty">
-                    <i class="fa-solid fa-chart-column"></i>
-                    <strong>Belum ada data mata pelajaran</strong>
-                    <span>
-                        Data sebaran akan muncul setelah guru memiliki penugasan mapel.
-                    </span>
-                </div>
-
-            @endif
-
-        </div>
-
-    </div>
-
-
-    {{-- =====================================================
-         PENCARIAN
-    ====================================================== --}}
-
-    <div class="card">
-
         <div class="card-header">
             <div>
                 <h3>Daftar Guru</h3>
-                <p>
-                    Cari guru berdasarkan nama, NIP, atau kode guru.
-                </p>
+                <p>Cari guru berdasarkan nama, NIP, atau kode guru.</p>
             </div>
         </div>
 
         <div class="card-body">
-
-            <form
-                method="GET"
-                action="{{ route('waka.guru') }}"
-                class="search-form"
-            >
+            <form method="GET" action="{{ route('waka.guru') }}" class="search-form">
 
                 <div class="search-box">
                     <i class="fa-solid fa-magnifying-glass"></i>
-
                     <input
                         type="text"
                         name="cari"
-                        value="{{ $kataKunci ?? request('cari') }}"
+                        value="{{ $kataKunci }}"
                         placeholder="Cari nama, NIP, atau kode guru..."
                         autocomplete="off"
                     >
@@ -320,7 +120,7 @@
                     Cari
                 </button>
 
-                @if(($kataKunci ?? request('cari')))
+                @if($kataKunci)
                     <a href="{{ route('waka.guru') }}" class="btn btn-secondary">
                         <i class="fa-solid fa-rotate-left"></i>
                         Reset
@@ -328,31 +128,21 @@
                 @endif
 
             </form>
-
         </div>
-
     </div>
 
-
-    {{-- =====================================================
-         TABEL DATA GURU
-    ====================================================== --}}
-
+    {{-- TABEL DATA GURU --}}
     <div class="card">
 
         <div class="card-header">
-
             <div>
                 <h3>Data Guru</h3>
-                <p>
-                    Daftar guru yang terdaftar dalam sistem SCP.
-                </p>
+                <p>Daftar guru yang terdaftar dalam sistem SCP.</p>
             </div>
 
             <div class="table-count">
-                {{ $dataGuru->total() ?? $dataGuru->count() }} data
+                {{ method_exists($dataGuru, 'total') ? $dataGuru->total() : $dataGuru->count() }} data
             </div>
-
         </div>
 
         <div class="card-body table-card-body">
@@ -360,9 +150,7 @@
             @if($dataGuru->count() > 0)
 
                 <div class="table-wrapper">
-
                     <table class="table">
-
                         <thead>
                             <tr>
                                 <th style="width:65px;">No</th>
@@ -375,72 +163,47 @@
                         </thead>
 
                         <tbody>
-
                             @foreach($dataGuru as $index => $guru)
-
                                 <tr>
-
                                     <td>
-                                        {{ ($dataGuru->firstItem() ?? 1) + $index }}
+                                        {{ method_exists($dataGuru, 'firstItem') ? (($dataGuru->firstItem() ?? 1) + $index) : ($index + 1) }}
                                     </td>
 
                                     <td>
                                         <div class="guru-profile">
-
                                             <div class="guru-avatar">
                                                 <i class="fa-solid fa-user"></i>
                                             </div>
-
                                             <div>
-                                                <strong class="guru-name">
-                                                    {{ $guru->nama ?? '-' }}
-                                                </strong>
-
-                                                <span class="guru-label">
-                                                    Guru SCP
-                                                </span>
+                                                <strong class="guru-name">{{ $guru->nama ?? '-' }}</strong>
+                                                <span class="guru-label">Guru SCP</span>
                                             </div>
-
                                         </div>
                                     </td>
 
                                     <td>
-                                        <span class="code-badge">
-                                            {{ $guru->kodeguru ?? '-' }}
-                                        </span>
+                                        <span class="code-badge">{{ $guru->kodeguru ?? '-' }}</span>
                                     </td>
 
                                     <td>
-                                        <span class="nip-text">
-                                            {{ $guru->nip ?? '-' }}
-                                        </span>
+                                        <span class="nip-text">{{ $guru->nip ?? '-' }}</span>
                                     </td>
 
                                     <td>
                                         @if(isset($guru->daftar_mapel) && $guru->daftar_mapel->count() > 0)
-
                                             <div class="mapel-tags">
                                                 @foreach($guru->daftar_mapel as $namaMapel)
-                                                    <span class="mapel-tag">
-                                                        {{ $namaMapel }}
-                                                    </span>
+                                                    <span class="mapel-tag">{{ $namaMapel }}</span>
                                                 @endforeach
                                             </div>
-
                                         @else
-
-                                            <span class="no-mapel">
-                                                Belum ada mapel
-                                            </span>
-
+                                            <span class="no-mapel">Belum ada mapel</span>
                                         @endif
                                     </td>
 
                                     <td>
                                         <div class="action-buttons">
-
                                             @if(!empty($guru->id))
-
                                                 <form
                                                     method="POST"
                                                     action="{{ route('waka.guru.hapus', $guru->id) }}"
@@ -457,25 +220,15 @@
                                                     >
                                                         <i class="fa-solid fa-trash"></i>
                                                     </button>
-
                                                 </form>
-
                                             @endif
-
                                         </div>
                                     </td>
-
                                 </tr>
-
                             @endforeach
-
                         </tbody>
-
                     </table>
-
                 </div>
-
-                {{-- PAGINATION --}}
 
                 @if(method_exists($dataGuru, 'links'))
                     <div class="pagination-wrapper">
@@ -484,77 +237,48 @@
                 @endif
 
             @else
-
                 <div class="empty-state">
-
                     <div class="empty-icon">
                         <i class="fa-solid fa-chalkboard-user"></i>
                     </div>
 
                     <strong>
-                        {{ ($kataKunci ?? '') ? 'Guru tidak ditemukan' : 'Data guru belum tersedia' }}
+                        {{ $kataKunci ? 'Guru tidak ditemukan' : 'Data guru belum tersedia' }}
                     </strong>
 
                     <span>
-                        {{ ($kataKunci ?? '') ? 'Coba gunakan kata kunci pencarian lainnya.' : 'Silakan tambahkan data guru menggunakan tombol Tambah Guru.' }}
+                        {{ $kataKunci ? 'Coba gunakan kata kunci pencarian lainnya.' : 'Silakan tambahkan data guru menggunakan tombol Tambah Guru.' }}
                     </span>
-
                 </div>
-
             @endif
 
         </div>
-
     </div>
 
-
-    {{-- =====================================================
-         INFORMASI AKUN GURU
-    ====================================================== --}}
-
+    {{-- INFORMASI AKUN GURU --}}
     <div class="info-card">
-
         <div class="info-icon">
             <i class="fa-solid fa-circle-info"></i>
         </div>
 
         <div>
             <strong>Informasi akun guru</strong>
-
             <p>
                 Saat guru ditambahkan, sistem otomatis membuat akun login guru.
                 Kode guru dan kode pegawai menggunakan NIP, sedangkan password
                 awal akun guru adalah NIP.
             </p>
         </div>
-
     </div>
 
-
-    {{-- =====================================================
-         MODAL TAMBAH GURU
-    ====================================================== --}}
-
-    <div
-        id="modalGuru"
-        class="modal-overlay"
-        aria-hidden="true"
-    >
-
-        <div
-            class="modal-card"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="judulModalGuru"
-        >
+    {{-- MODAL TAMBAH GURU --}}
+    <div id="modalGuru" class="modal-overlay" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="judulModalGuru">
 
             <div class="modal-header">
-
                 <div>
                     <h2 id="judulModalGuru">Tambah Guru</h2>
-                    <p>
-                        Tambahkan data guru sekaligus membuat akun login.
-                    </p>
+                    <p>Tambahkan data guru sekaligus membuat akun login.</p>
                 </div>
 
                 <button
@@ -565,24 +289,14 @@
                 >
                     <i class="fa-solid fa-xmark"></i>
                 </button>
-
             </div>
 
-            <form
-                action="{{ route('waka.guru.simpan') }}"
-                method="POST"
-            >
-
+            <form action="{{ route('waka.guru.simpan') }}" method="POST">
                 @csrf
 
                 <div class="modal-body">
-
                     <div class="form-group">
-
-                        <label for="namaGuru">
-                            Nama Lengkap Guru
-                        </label>
-
+                        <label for="namaGuru">Nama Lengkap Guru</label>
                         <input
                             type="text"
                             id="namaGuru"
@@ -592,17 +306,11 @@
                             maxlength="255"
                             required
                         >
-
-                        <small>
-                            Nama akan digunakan sebagai nama akun guru.
-                        </small>
-
+                        <small>Nama akan digunakan sebagai nama akun guru.</small>
                     </div>
 
                     <div class="form-group">
-
                         <label for="nipGuru">NIP</label>
-
                         <input
                             type="text"
                             id="nipGuru"
@@ -612,16 +320,13 @@
                             maxlength="100"
                             required
                         >
-
                         <small>
                             NIP digunakan sebagai kode guru, kode pegawai,
                             dan password awal akun.
                         </small>
-
                     </div>
 
                     <div class="account-info">
-
                         <div class="account-info-title">
                             <i class="fa-solid fa-user-lock"></i>
                             Informasi Akun Login
@@ -631,33 +336,23 @@
                             <span>Nama akun</span>
                             <strong>Nama Guru</strong>
                         </div>
-
                         <div class="account-info-row">
                             <span>Kode guru</span>
                             <strong>NIP</strong>
                         </div>
-
                         <div class="account-info-row">
                             <span>Kode pegawai</span>
                             <strong>NIP</strong>
                         </div>
-
                         <div class="account-info-row">
                             <span>Password awal</span>
                             <strong>NIP</strong>
                         </div>
-
                     </div>
-
                 </div>
 
                 <div class="modal-footer">
-
-                    <button
-                        type="button"
-                        class="btn btn-secondary"
-                        onclick="tutupModalGuru()"
-                    >
+                    <button type="button" class="btn btn-secondary" onclick="tutupModalGuru()">
                         Batal
                     </button>
 
@@ -665,40 +360,19 @@
                         <i class="fa-solid fa-floppy-disk"></i>
                         Simpan Guru
                     </button>
-
                 </div>
-
             </form>
-
         </div>
-
     </div>
 
-
-    {{-- =====================================================
-         MODAL IMPORT GURU
-    ====================================================== --}}
-
-    <div
-        id="modalImportGuru"
-        class="modal-overlay"
-        aria-hidden="true"
-    >
-
-        <div
-            class="modal-card import-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="judulModalImportGuru"
-        >
+    {{-- MODAL IMPORT GURU --}}
+    <div id="modalImportGuru" class="modal-overlay" aria-hidden="true">
+        <div class="modal-card import-modal" role="dialog" aria-modal="true" aria-labelledby="judulModalImportGuru">
 
             <div class="modal-header">
-
                 <div>
                     <h2 id="judulModalImportGuru">Import Data Guru</h2>
-                    <p>
-                        Masukkan data guru melalui file Excel, CSV, atau PDF.
-                    </p>
+                    <p>Masukkan data guru melalui file Excel atau CSV.</p>
                 </div>
 
                 <button
@@ -709,7 +383,6 @@
                 >
                     <i class="fa-solid fa-xmark"></i>
                 </button>
-
             </div>
 
             <form
@@ -717,25 +390,22 @@
                 method="POST"
                 enctype="multipart/form-data"
             >
-
                 @csrf
 
                 <div class="modal-body">
 
                     <div class="import-information">
                         <i class="fa-solid fa-circle-info"></i>
-
                         <div>
                             <strong>Format file yang didukung</strong>
                             <p>
-                                Excel (.xlsx, .xls), CSV (.csv), dan PDF (.pdf).
+                                Excel (.xlsx, .xls) dan CSV (.csv).
                                 Ukuran maksimal file 10 MB.
                             </p>
                         </div>
                     </div>
 
                     <div class="import-format-list">
-
                         <div>
                             <i class="fa-solid fa-file-excel"></i>
                             <span>Excel</span>
@@ -747,94 +417,56 @@
                             <span>CSV</span>
                             <small>.csv</small>
                         </div>
-
-                        <div>
-                            <i class="fa-solid fa-file-pdf"></i>
-                            <span>PDF</span>
-                            <small>.pdf</small>
-                        </div>
-
                     </div>
 
                     <div class="form-group">
-
-                        <label for="fileImportGuru">
-                            Pilih File Data Guru
-                        </label>
-
+                        <label for="fileImportGuru">Pilih File Data Guru</label>
                         <input
                             type="file"
                             id="fileImportGuru"
                             name="file"
-                            accept=".xlsx,.xls,.csv,.pdf"
+                            accept=".xlsx,.xls,.csv"
                             required
                         >
-
-                        <small id="namaFileGuru">
-                            Belum ada file yang dipilih.
-                        </small>
-
+                        <small id="namaFileGuru">Belum ada file yang dipilih.</small>
                     </div>
 
                     <div class="import-warning">
                         <i class="fa-solid fa-triangle-exclamation"></i>
-
                         <p>
                             Pastikan file memiliki kolom kode guru atau NIP
-                            dan nama guru. File PDF harus berisi teks atau
-                            tabel yang dapat dibaca, bukan hanya gambar hasil scan.
+                            dan nama guru.
                         </p>
                     </div>
 
                 </div>
 
                 <div class="modal-footer">
-
-                    <button
-                        type="button"
-                        class="btn btn-secondary"
-                        onclick="tutupModalImportGuru()"
-                    >
+                    <button type="button" class="btn btn-secondary" onclick="tutupModalImportGuru()">
                         Batal
                     </button>
 
-                    <button
-                        type="submit"
-                        class="btn btn-primary"
-                    >
+                    <button type="submit" class="btn btn-primary">
                         <i class="fa-solid fa-file-import"></i>
                         Import Sekarang
                     </button>
-
                 </div>
-
             </form>
-
         </div>
-
     </div>
 
 </div>
 
 @endsection
 
-
-{{-- =========================================================
-     CSS
-========================================================= --}}
-
 @push('styles')
-
 <style>
-
 .guru-page {
     width:100%;
     max-width:1500px;
     margin:0 auto;
     color:#172033;
 }
-
-/* HEADER */
 
 .page-header {
     display:flex;
@@ -863,8 +495,6 @@
     gap:10px;
     flex-wrap:wrap;
 }
-
-/* BUTTON */
 
 .btn {
     border:0;
@@ -916,8 +546,6 @@
     background:#d1fae5;
 }
 
-/* ALERT */
-
 .alert {
     display:flex;
     align-items:flex-start;
@@ -954,84 +582,6 @@
 .error-list li {
     margin-bottom:4px;
 }
-
-/* STATISTIK */
-
-.stats-grid {
-    display:grid;
-    grid-template-columns:repeat(4, minmax(0, 1fr));
-    gap:16px;
-    margin-bottom:20px;
-}
-
-.stat-card {
-    background:#fff;
-    border:1px solid #e5eaf1;
-    border-radius:16px;
-    padding:20px;
-    box-shadow:0 5px 18px rgba(15,23,42,.04);
-}
-
-.stat-card-top {
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:12px;
-}
-
-.stat-label {
-    color:#64748b;
-    font-size:13px;
-    margin-bottom:7px;
-    line-height:1.5;
-}
-
-.stat-number {
-    color:#0f172a;
-    font-size:27px;
-    line-height:1.1;
-    font-weight:700;
-}
-
-.stat-description {
-    color:#94a3b8;
-    font-size:11px;
-    margin-top:8px;
-    line-height:1.5;
-}
-
-.stat-icon {
-    width:46px;
-    height:46px;
-    flex:0 0 46px;
-    border-radius:12px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:19px;
-}
-
-.stat-icon.blue {
-    background:#eff6ff;
-    color:#2563eb;
-}
-
-.stat-icon.green {
-    background:#ecfdf5;
-    color:#059669;
-}
-
-.stat-icon.orange {
-    background:#fff7ed;
-    color:#ea580c;
-}
-
-.stat-icon.purple {
-    background:#f5f3ff;
-    color:#7c3aed;
-}
-
-/* CARD */
 
 .card {
     background:#fff;
@@ -1072,8 +622,7 @@
     padding:0;
 }
 
-.table-count,
-.chart-total {
+.table-count {
     padding:6px 10px;
     border-radius:8px;
     background:#eff6ff;
@@ -1082,81 +631,6 @@
     font-weight:700;
     white-space:nowrap;
 }
-
-/* GRAFIK MAPEL */
-
-.mapel-chart {
-    display:flex;
-    flex-direction:column;
-    gap:19px;
-}
-
-.chart-item {
-    width:100%;
-}
-
-.chart-info {
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:15px;
-    margin-bottom:8px;
-}
-
-.chart-name {
-    color:#334155;
-    font-size:13px;
-    font-weight:600;
-}
-
-.chart-value {
-    color:#2563eb;
-    font-size:12px;
-    white-space:nowrap;
-}
-
-.chart-track {
-    width:100%;
-    height:11px;
-    background:#eef2f7;
-    border-radius:20px;
-    overflow:hidden;
-}
-
-.chart-bar {
-    height:100%;
-    min-width:3px;
-    border-radius:20px;
-    background:linear-gradient(90deg,#2563eb,#60a5fa);
-    transition:width .3s ease;
-}
-
-.chart-empty {
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
-    padding:35px 15px;
-    color:#94a3b8;
-}
-
-.chart-empty i {
-    font-size:25px;
-    margin-bottom:12px;
-}
-
-.chart-empty strong {
-    color:#475569;
-    font-size:14px;
-}
-
-.chart-empty span {
-    margin-top:6px;
-    font-size:12px;
-}
-
-/* SEARCH */
 
 .search-form {
     display:flex;
@@ -1194,8 +668,6 @@
     border-color:#2563eb;
     box-shadow:0 0 0 3px rgba(37,99,235,.1);
 }
-
-/* TABLE */
 
 .table-wrapper {
     width:100%;
@@ -1235,8 +707,6 @@
     background:#f8fbff;
 }
 
-/* GURU PROFILE */
-
 .guru-profile {
     display:flex;
     align-items:center;
@@ -1269,8 +739,6 @@
     font-size:11px;
 }
 
-/* BADGE */
-
 .code-badge {
     display:inline-flex;
     align-items:center;
@@ -1286,8 +754,6 @@
     white-space:nowrap;
     color:#334155;
 }
-
-/* MAPEL TAG */
 
 .mapel-tags {
     display:flex;
@@ -1315,8 +781,6 @@
     font-size:11px;
     font-weight:600;
 }
-
-/* ACTION */
 
 .action-buttons {
     display:flex;
@@ -1346,8 +810,6 @@
 .action-btn.delete:hover {
     background:#fee2e2;
 }
-
-/* PAGINATION */
 
 .pagination-wrapper {
     padding:18px 20px;
@@ -1400,8 +862,6 @@
     color:#2563eb;
 }
 
-/* EMPTY */
-
 .empty-state {
     display:flex;
     flex-direction:column;
@@ -1434,8 +894,6 @@
     color:#94a3b8;
     font-size:13px;
 }
-
-/* INFO */
 
 .info-card {
     display:flex;
@@ -1472,8 +930,6 @@
     font-size:13px;
     line-height:1.6;
 }
-
-/* MODAL */
 
 .modal-overlay {
     position:fixed;
@@ -1584,8 +1040,6 @@
     line-height:1.5;
 }
 
-/* ACCOUNT INFO */
-
 .account-info {
     padding:15px;
     background:#f8fafc;
@@ -1628,8 +1082,6 @@
     border-top:1px solid #edf2f7;
 }
 
-/* IMPORT */
-
 .import-information {
     display:flex;
     align-items:flex-start;
@@ -1661,7 +1113,7 @@
 
 .import-format-list {
     display:grid;
-    grid-template-columns:repeat(3,1fr);
+    grid-template-columns:repeat(2,1fr);
     gap:10px;
     margin-bottom:20px;
 }
@@ -1722,16 +1174,7 @@
     line-height:1.6;
 }
 
-/* RESPONSIVE */
-
-@media(max-width:1100px) {
-    .stats-grid {
-        grid-template-columns:repeat(2, minmax(0, 1fr));
-    }
-}
-
 @media(max-width:700px) {
-
     .page-header {
         flex-direction:column;
         align-items:stretch;
@@ -1743,10 +1186,6 @@
 
     .header-actions .btn {
         flex:1;
-    }
-
-    .stats-grid {
-        grid-template-columns:1fr;
     }
 
     .search-form {
@@ -1773,62 +1212,36 @@
     .pagination-wrapper nav {
         align-items:flex-start;
     }
-
-    .import-format-list {
-        grid-template-columns:repeat(3,minmax(0,1fr));
-    }
 }
-
 </style>
-
 @endpush
 
-
-{{-- =========================================================
-     JAVASCRIPT
-========================================================= --}}
-
 @push('scripts')
-
 <script>
-
-/* =========================================================
-   MODAL TAMBAH GURU
-========================================================= */
-
 function bukaModalGuru()
 {
     const modal = document.getElementById('modalGuru');
 
-    if (!modal) {
-        return;
-    }
+    if (!modal) return;
 
     modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
 
     setTimeout(function () {
         const input = document.getElementById('namaGuru');
-
-        if (input) {
-            input.focus();
-        }
+        if (input) input.focus();
     }, 100);
 }
-
 
 function tutupModalGuru()
 {
     const modal = document.getElementById('modalGuru');
 
-    if (!modal) {
-        return;
-    }
+    if (!modal) return;
 
     modal.classList.remove('active');
     modal.setAttribute('aria-hidden', 'true');
 }
-
 
 function konfirmasiHapusGuru()
 {
@@ -1837,40 +1250,25 @@ function konfirmasiHapusGuru()
     );
 }
 
-
-/* =========================================================
-   MODAL IMPORT GURU
-========================================================= */
-
 function bukaModalImportGuru()
 {
     const modal = document.getElementById('modalImportGuru');
 
-    if (!modal) {
-        return;
-    }
+    if (!modal) return;
 
     modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
 }
 
-
 function tutupModalImportGuru()
 {
     const modal = document.getElementById('modalImportGuru');
 
-    if (!modal) {
-        return;
-    }
+    if (!modal) return;
 
     modal.classList.remove('active');
     modal.setAttribute('aria-hidden', 'true');
 }
-
-
-/* =========================================================
-   TAMPILKAN NAMA FILE
-========================================================= */
 
 document.addEventListener('DOMContentLoaded', function() {
 
@@ -1878,27 +1276,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const namaFile = document.getElementById('namaFileGuru');
 
     if (inputFile && namaFile) {
-
         inputFile.addEventListener('change', function() {
-
             if (this.files && this.files.length > 0) {
-                namaFile.textContent =
-                    'File dipilih: ' + this.files[0].name;
+                namaFile.textContent = 'File dipilih: ' + this.files[0].name;
             } else {
-                namaFile.textContent =
-                    'Belum ada file yang dipilih.';
+                namaFile.textContent = 'Belum ada file yang dipilih.';
             }
-
         });
-
     }
 
+    @if($errors->any())
+        bukaModalGuru();
+    @endif
 });
-
-
-/* =========================================================
-   KLIK AREA LUAR MODAL
-========================================================= */
 
 document.addEventListener('click', function(event) {
 
@@ -1912,36 +1302,13 @@ document.addEventListener('click', function(event) {
     if (modalImport && event.target === modalImport) {
         tutupModalImportGuru();
     }
-
 });
 
-
-/* =========================================================
-   TOMBOL ESC
-========================================================= */
-
 document.addEventListener('keydown', function(event) {
-
     if (event.key === 'Escape') {
         tutupModalGuru();
         tutupModalImportGuru();
     }
-
 });
-
-
-/* =========================================================
-   BUKA MODAL TAMBAH JIKA VALIDASI GAGAL
-========================================================= */
-
-@if($errors->any())
-
-document.addEventListener('DOMContentLoaded', function() {
-    bukaModalGuru();
-});
-
-@endif
-
 </script>
-
 @endpush

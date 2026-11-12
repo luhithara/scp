@@ -1,9 +1,15 @@
 @php
     $user = auth()->user();
 
-    $role = strtolower(
-        trim($user->role ?? '')
-    );
+    $role = strtolower(trim($user->role ?? ''));
+
+    $dashboardRoute = match ($role) {
+        'waka' => 'waka.dashboard',
+        'guru' => 'guru.dashboard',
+        'bk' => 'bk.dashboard',
+        'orangtua' => 'orangtua.dashboard',
+        default => 'dashboard',
+    };
 @endphp
 
 <link
@@ -19,22 +25,24 @@
         top: 0;
         left: 0;
         z-index: 1000;
+        display: flex;
+        flex-direction: column;
         overflow-y: auto;
         background: linear-gradient(180deg, #0f4c81 0%, #123f68 100%);
-        color: #ffffff;
-        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.08);
+        color: #fff;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, .08);
     }
 
     .scp-sidebar-header {
         padding: 24px 20px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        border-bottom: 1px solid rgba(255, 255, 255, .12);
     }
 
     .scp-brand {
         display: flex;
         align-items: center;
         gap: 12px;
-        color: #ffffff;
+        color: #fff;
         text-decoration: none;
     }
 
@@ -46,12 +54,11 @@
         justify-content: center;
         flex-shrink: 0;
         border-radius: 13px;
-        background: #ffffff;
+        background: #fff;
         color: #0f4c81;
         font-size: 13px;
         font-weight: 800;
-        letter-spacing: 0.5px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        letter-spacing: .5px;
     }
 
     .scp-brand-title {
@@ -63,22 +70,22 @@
     .scp-brand-subtitle {
         margin-top: 4px;
         font-size: 10px;
-        opacity: 0.70;
-        letter-spacing: 0.2px;
+        opacity: .7;
+        letter-spacing: .2px;
     }
 
     .scp-sidebar-user {
         margin: 18px 16px;
         padding: 14px;
+        border: 1px solid rgba(255, 255, 255, .06);
         border-radius: 13px;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(255, 255, 255, .08);
     }
 
     .scp-user-name {
         margin-bottom: 5px;
         overflow: hidden;
-        color: #ffffff;
+        color: #fff;
         font-size: 14px;
         font-weight: 700;
         white-space: nowrap;
@@ -86,19 +93,19 @@
     }
 
     .scp-user-role {
-        color: #ffffff;
+        color: #fff;
         font-size: 10px;
-        opacity: 0.65;
+        opacity: .65;
         text-transform: uppercase;
         letter-spacing: 1px;
     }
 
     .scp-menu-title {
         padding: 8px 20px;
-        color: #ffffff;
+        color: #fff;
         font-size: 9px;
         font-weight: 700;
-        opacity: 0.55;
+        opacity: .55;
         text-transform: uppercase;
         letter-spacing: 1.3px;
     }
@@ -114,23 +121,23 @@
         margin-bottom: 4px;
         padding: 11px 13px;
         border-radius: 11px;
-        color: rgba(255, 255, 255, 0.78);
+        color: rgba(255, 255, 255, .78);
         font-size: 13px;
         font-weight: 600;
         text-decoration: none;
-        transition: all 0.2s ease;
+        transition: all .2s ease;
     }
 
     .scp-menu a:hover {
-        background: rgba(255, 255, 255, 0.09);
-        color: #ffffff;
+        background: rgba(255, 255, 255, .09);
+        color: #fff;
         transform: translateX(2px);
     }
 
     .scp-menu a.active {
-        background: #ffffff;
+        background: #fff;
         color: #0f4c81;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.10);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, .10);
     }
 
     .scp-menu-icon {
@@ -141,15 +148,15 @@
         align-items: center;
         justify-content: center;
         border-radius: 9px;
-        background: rgba(255, 255, 255, 0.08);
-        color: rgba(255, 255, 255, 0.85);
+        background: rgba(255, 255, 255, .08);
+        color: rgba(255, 255, 255, .85);
         font-size: 13px;
-        transition: all 0.2s ease;
+        transition: all .2s ease;
     }
 
     .scp-menu a:hover .scp-menu-icon {
-        background: rgba(255, 255, 255, 0.14);
-        color: #ffffff;
+        background: rgba(255, 255, 255, .14);
+        color: #fff;
     }
 
     .scp-menu a.active .scp-menu-icon {
@@ -158,8 +165,9 @@
     }
 
     .scp-sidebar-footer {
+        margin-top: auto;
         padding: 15px 12px 22px;
-        border-top: 1px solid rgba(255, 255, 255, 0.10);
+        border-top: 1px solid rgba(255, 255, 255, .10);
     }
 
     .scp-logout {
@@ -170,23 +178,23 @@
         padding: 11px 13px;
         border: none;
         border-radius: 11px;
-        background: rgba(255, 255, 255, 0.07);
-        color: rgba(255, 255, 255, 0.82);
+        background: rgba(255, 255, 255, .07);
+        color: rgba(255, 255, 255, .82);
         cursor: pointer;
         font-family: inherit;
         font-size: 13px;
         font-weight: 600;
-        transition: all 0.2s ease;
+        transition: all .2s ease;
     }
 
     .scp-logout:hover {
-        background: rgba(220, 38, 38, 0.90);
-        color: #ffffff;
+        background: rgba(220, 38, 38, .90);
+        color: #fff;
     }
 
     .scp-logout:hover .scp-menu-icon {
-        background: rgba(255, 255, 255, 0.15);
-        color: #ffffff;
+        background: rgba(255, 255, 255, .15);
+        color: #fff;
     }
 
     .scp-sidebar::-webkit-scrollbar {
@@ -198,7 +206,7 @@
     }
 
     .scp-sidebar::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.20);
+        background: rgba(255, 255, 255, .20);
         border-radius: 10px;
     }
 
@@ -219,21 +227,9 @@
 
 <aside class="scp-sidebar">
 
-    {{-- HEADER SIDEBAR --}}
+    {{-- HEADER --}}
     <div class="scp-sidebar-header">
-
-        @if($role === 'waka')
-            <a href="{{ route('waka.dashboard') }}" class="scp-brand">
-        @elseif($role === 'guru')
-            <a href="{{ route('guru.dashboard') }}" class="scp-brand">
-        @elseif($role === 'bk')
-            <a href="{{ route('bk.dashboard') }}" class="scp-brand">
-        @elseif($role === 'orangtua')
-            <a href="{{ route('orangtua.dashboard') }}" class="scp-brand">
-        @else
-            <a href="{{ route('dashboard') }}" class="scp-brand">
-        @endif
-
+        <a href="{{ route($dashboardRoute) }}" class="scp-brand">
             <div class="scp-brand-icon">SCP</div>
 
             <div>
@@ -245,11 +241,10 @@
                     Sistem Informasi Sekolah
                 </div>
             </div>
-
         </a>
     </div>
 
-    {{-- USER SIDEBAR --}}
+    {{-- INFORMASI PENGGUNA --}}
     <div class="scp-sidebar-user">
         <div class="scp-user-name">
             {{ $user->name ?? 'Pengguna' }}
@@ -267,133 +262,90 @@
 
         <nav class="scp-menu">
 
-            <a
-                href="{{ route('waka.dashboard') }}"
-                class="{{ request()->routeIs('waka.dashboard') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-house"></i>
-                </span>
+            <a href="{{ route('waka.dashboard') }}"
+               class="{{ request()->routeIs('waka.dashboard') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-house"></i></span>
                 <span>Dashboard</span>
             </a>
 
-            <a
-                href="{{ route('waka.guru') }}"
-                class="{{ request()->routeIs('waka.guru*') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-user-tie"></i>
-                </span>
+            <a href="{{ route('waka.guru') }}"
+               class="{{ request()->routeIs('waka.guru*') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-user-tie"></i></span>
                 <span>Data Guru</span>
             </a>
 
-            {{-- MENU DATA SISWA BARU --}}
-            <a
-                href="{{ route('waka.siswa') }}"
-                class="{{ request()->routeIs('waka.siswa*') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-users"></i>
-                </span>
+            <a href="{{ route('waka.siswa') }}"
+               class="{{ request()->routeIs('waka.siswa*') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-users"></i></span>
                 <span>Data Siswa</span>
             </a>
 
-            <a
-                href="{{ route('waka.kelas') }}"
-                class="{{ request()->routeIs('waka.kelas*') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-school"></i>
-                </span>
+            <a href="{{ route('waka.kelas') }}"
+               class="{{ request()->routeIs('waka.kelas*') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-school"></i></span>
                 <span>Data Kelas</span>
             </a>
 
-            <a
-                href="{{ route('waka.jadwal') }}"
-                class="{{ request()->routeIs('waka.jadwal*') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-regular fa-calendar-days"></i>
-                </span>
+            <a href="{{ route('waka.jadwal') }}"
+               class="{{ request()->routeIs('waka.jadwal*') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-regular fa-calendar-days"></i></span>
                 <span>Jadwal</span>
             </a>
 
-            <a
-                href="{{ route('waka.jurnal') }}"
-                class="{{ request()->routeIs('waka.jurnal*') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-book-open"></i>
-                </span>
+            <a href="{{ route('waka.jurnal') }}"
+               class="{{ request()->routeIs('waka.jurnal*') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-book-open"></i></span>
                 <span>Jurnal Mengajar</span>
             </a>
 
-            <a
-                href="{{ route('profil') }}"
-                class="{{ request()->routeIs('profil*') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-regular fa-user"></i>
-                </span>
+            <a href="{{ route('waka.rekap-presensi') }}"
+               class="{{ request()->routeIs('waka.rekap-presensi*') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-clipboard-list"></i></span>
+                <span>Rekap Presensi</span>
+            </a>
+
+            <a href="{{ route('profil') }}"
+               class="{{ request()->routeIs('profil*') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-regular fa-user"></i></span>
                 <span>Profil</span>
             </a>
 
         </nav>
 
-    {{-- MENU ORANGTUA --}}
+    {{-- MENU ORANG TUA --}}
     @elseif($role === 'orangtua')
 
-        <div class="scp-menu-title">Menu Orangtua</div>
+        <div class="scp-menu-title">Menu Orang Tua</div>
 
         <nav class="scp-menu">
 
-            <a
-                href="{{ route('orangtua.dashboard') }}"
-                class="{{ request()->routeIs('orangtua.dashboard') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-house"></i>
-                </span>
+            <a href="{{ route('orangtua.dashboard') }}"
+               class="{{ request()->routeIs('orangtua.dashboard') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-house"></i></span>
                 <span>Dashboard</span>
             </a>
 
-            <a
-                href="{{ route('orangtua.jadwal') }}"
-                class="{{ request()->routeIs('orangtua.jadwal*') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-regular fa-calendar-days"></i>
-                </span>
+            <a href="{{ route('orangtua.jadwal') }}"
+               class="{{ request()->routeIs('orangtua.jadwal*') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-regular fa-calendar-days"></i></span>
                 <span>Jadwal Anak</span>
             </a>
 
-            <a
-                href="{{ route('orangtua.presensi') }}"
-                class="{{ request()->routeIs('orangtua.presensi*') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-clipboard-check"></i>
-                </span>
+            <a href="{{ route('orangtua.presensi') }}"
+               class="{{ request()->routeIs('orangtua.presensi*') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-clipboard-check"></i></span>
                 <span>Presensi Anak</span>
             </a>
 
-            <a
-                href="{{ route('izin') }}"
-                class="{{ request()->routeIs('izin*') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-file-circle-check"></i>
-                </span>
+            <a href="{{ route('izin') }}"
+               class="{{ request()->routeIs('izin*') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-file-circle-check"></i></span>
                 <span>Perizinan</span>
             </a>
 
-            <a
-                href="{{ route('orangtua.profil') }}"
-                class="{{ request()->routeIs('orangtua.profil*') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-regular fa-user"></i>
-                </span>
+            <a href="{{ route('orangtua.profil') }}"
+               class="{{ request()->routeIs('orangtua.profil*') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-regular fa-user"></i></span>
                 <span>Profil</span>
             </a>
 
@@ -406,64 +358,34 @@
 
         <nav class="scp-menu">
 
-            <a
-                href="{{ route('guru.dashboard') }}"
-                class="{{ request()->routeIs('guru.dashboard') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-house"></i>
-                </span>
+            <a href="{{ route('guru.dashboard') }}"
+               class="{{ request()->routeIs('guru.dashboard') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-house"></i></span>
                 <span>Dashboard</span>
             </a>
 
-            <a
-                href="{{ route('guru.jadwal') }}"
-                class="{{ request()->routeIs('guru.jadwal*') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-regular fa-calendar-days"></i>
-                </span>
+            <a href="{{ route('guru.jadwal') }}"
+               class="{{ request()->routeIs('guru.jadwal*') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-regular fa-calendar-days"></i></span>
                 <span>Jadwal Mengajar</span>
             </a>
 
-            <a
-                href="{{ route('presensi') }}"
-                class="{{ request()->routeIs('presensi*') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-clipboard-check"></i>
-                </span>
+            <a href="{{ route('presensi') }}"
+               class="{{ request()->routeIs('presensi*') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-clipboard-check"></i></span>
                 <span>Presensi</span>
             </a>
 
-            <a
-                href="{{ route('jurnal.guru') }}"
-                class="{{ request()->routeIs('jurnal.guru*') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-book-open"></i>
-                </span>
+            <a href="{{ route('jurnal.guru') }}"
+               class="{{ request()->routeIs('jurnal.guru*') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-book-open"></i></span>
                 <span>Jurnal Mengajar</span>
             </a>
 
-            <a
-                href="{{ route('guru.izin') }}"
-                class="{{ request()->routeIs('guru.izin*') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-file-circle-check"></i>
-                </span>
-                <span>Perizinan Siswa</span>
-            </a>
-
             @if(Route::has('profil'))
-                <a
-                    href="{{ route('profil') }}"
-                    class="{{ request()->routeIs('profil*') ? 'active' : '' }}"
-                >
-                    <span class="scp-menu-icon">
-                        <i class="fa-regular fa-user"></i>
-                    </span>
+                <a href="{{ route('profil') }}"
+                   class="{{ request()->routeIs('profil*') ? 'active' : '' }}">
+                    <span class="scp-menu-icon"><i class="fa-regular fa-user"></i></span>
                     <span>Profil</span>
                 </a>
             @endif
@@ -477,74 +399,46 @@
 
         <nav class="scp-menu">
 
-            <a
-                href="{{ route('bk.dashboard') }}"
-                class="{{ request()->routeIs('bk.dashboard') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-house"></i>
-                </span>
+            <a href="{{ route('bk.dashboard') }}"
+               class="{{ request()->routeIs('bk.dashboard') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-house"></i></span>
                 <span>Dashboard</span>
             </a>
 
-            <a
-                href="{{ route('bk.kelas') }}"
-                class="{{ request()->routeIs('bk.kelas*') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-school"></i>
-                </span>
+            <a href="{{ route('bk.kelas') }}"
+               class="{{ request()->routeIs('bk.kelas*') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-school"></i></span>
                 <span>Kelas Binaan</span>
             </a>
 
-            <a
-                href="{{ route('bk.siswa') }}"
-                class="{{ request()->routeIs('bk.siswa*') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-users"></i>
-                </span>
+            <a href="{{ route('bk.siswa') }}"
+               class="{{ request()->routeIs('bk.siswa*') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-users"></i></span>
                 <span>Data Siswa</span>
             </a>
 
-            <a
-                href="{{ route('bk.presensi') }}"
-                class="{{ request()->routeIs('bk.presensi') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-clipboard-check"></i>
-                </span>
+            <a href="{{ route('bk.presensi') }}"
+               class="{{ request()->routeIs('bk.presensi') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-clipboard-check"></i></span>
                 <span>Presensi</span>
             </a>
 
-            <a
-                href="{{ route('bk.butuh-penanganan') }}"
-                class="{{ request()->routeIs('bk.butuh-penanganan') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-user-clock"></i>
-                </span>
+            <a href="{{ route('bk.butuh-penanganan') }}"
+               class="{{ request()->routeIs('bk.butuh-penanganan') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-user-clock"></i></span>
                 <span>Butuh Penanganan</span>
             </a>
 
-            <a
-                href="{{ route('bk.izin') }}"
-                class="{{ request()->routeIs('bk.izin') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-file-circle-check"></i>
-                </span>
+            <a href="{{ route('bk.izin') }}"
+               class="{{ request()->routeIs('bk.izin') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-file-circle-check"></i></span>
                 <span>Perizinan</span>
             </a>
 
             @if(Route::has('profil'))
-                <a
-                    href="{{ route('profil') }}"
-                    class="{{ request()->routeIs('profil*') ? 'active' : '' }}"
-                >
-                    <span class="scp-menu-icon">
-                        <i class="fa-regular fa-user"></i>
-                    </span>
+                <a href="{{ route('profil') }}"
+                   class="{{ request()->routeIs('profil*') ? 'active' : '' }}">
+                    <span class="scp-menu-icon"><i class="fa-regular fa-user"></i></span>
                     <span>Profil</span>
                 </a>
             @endif
@@ -610,57 +504,37 @@
         <nav class="scp-menu">
 
             @if(Route::has('dashboard'))
-                <a
-                    href="{{ route('dashboard') }}"
-                    class="{{ request()->routeIs('dashboard') ? 'active' : '' }}"
-                >
-                    <span class="scp-menu-icon">
-                        <i class="fa-solid fa-house"></i>
-                    </span>
+                <a href="{{ route('dashboard') }}"
+                   class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                    <span class="scp-menu-icon"><i class="fa-solid fa-house"></i></span>
                     <span>Dashboard</span>
                 </a>
             @endif
 
-            <a
-                href="{{ route('jadwal.siswa') }}"
-                class="{{ request()->routeIs('jadwal.siswa*') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-regular fa-calendar-days"></i>
-                </span>
+            <a href="{{ route('jadwal.siswa') }}"
+               class="{{ request()->routeIs('jadwal.siswa*') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-regular fa-calendar-days"></i></span>
                 <span>Jadwal</span>
             </a>
 
-            <a
-                href="{{ route('presensi.siswa') }}"
-                class="{{ request()->routeIs('presensi.siswa*') ? 'active' : '' }}"
-            >
-                <span class="scp-menu-icon">
-                    <i class="fa-solid fa-clipboard-check"></i>
-                </span>
+            <a href="{{ route('presensi.siswa') }}"
+               class="{{ request()->routeIs('presensi.siswa*') ? 'active' : '' }}">
+                <span class="scp-menu-icon"><i class="fa-solid fa-clipboard-check"></i></span>
                 <span>Presensi</span>
             </a>
 
             @if(Route::has('izin'))
-                <a
-                    href="{{ route('izin') }}"
-                    class="{{ request()->routeIs('izin*') ? 'active' : '' }}"
-                >
-                    <span class="scp-menu-icon">
-                        <i class="fa-solid fa-file-circle-check"></i>
-                    </span>
+                <a href="{{ route('izin') }}"
+                   class="{{ request()->routeIs('izin*') ? 'active' : '' }}">
+                    <span class="scp-menu-icon"><i class="fa-solid fa-file-circle-check"></i></span>
                     <span>Perizinan</span>
                 </a>
             @endif
 
             @if(Route::has('profil'))
-                <a
-                    href="{{ route('profil') }}"
-                    class="{{ request()->routeIs('profil*') ? 'active' : '' }}"
-                >
-                    <span class="scp-menu-icon">
-                        <i class="fa-regular fa-user"></i>
-                    </span>
+                <a href="{{ route('profil') }}"
+                   class="{{ request()->routeIs('profil*') ? 'active' : '' }}">
+                    <span class="scp-menu-icon"><i class="fa-regular fa-user"></i></span>
                     <span>Profil</span>
                 </a>
             @endif
@@ -675,25 +549,17 @@
         <nav class="scp-menu">
 
             @if(Route::has('dashboard'))
-                <a
-                    href="{{ route('dashboard') }}"
-                    class="{{ request()->routeIs('dashboard') ? 'active' : '' }}"
-                >
-                    <span class="scp-menu-icon">
-                        <i class="fa-solid fa-house"></i>
-                    </span>
+                <a href="{{ route('dashboard') }}"
+                   class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                    <span class="scp-menu-icon"><i class="fa-solid fa-house"></i></span>
                     <span>Dashboard</span>
                 </a>
             @endif
 
             @if(Route::has('profil'))
-                <a
-                    href="{{ route('profil') }}"
-                    class="{{ request()->routeIs('profil*') ? 'active' : '' }}"
-                >
-                    <span class="scp-menu-icon">
-                        <i class="fa-regular fa-user"></i>
-                    </span>
+                <a href="{{ route('profil') }}"
+                   class="{{ request()->routeIs('profil*') ? 'active' : '' }}">
+                    <span class="scp-menu-icon"><i class="fa-regular fa-user"></i></span>
                     <span>Profil</span>
                 </a>
             @endif
@@ -704,7 +570,6 @@
 
     {{-- LOGOUT --}}
     <div class="scp-sidebar-footer">
-
         <form method="POST" action="{{ route('logout') }}">
             @csrf
 
@@ -716,7 +581,6 @@
                 <span>Keluar</span>
             </button>
         </form>
-
     </div>
 
 </aside>

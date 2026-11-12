@@ -13,12 +13,23 @@
     </div>
 @endif
 
+@if($errors->any())
+    <div class="presensi-error">
+        @foreach($errors->all() as $error)
+            <div>{{ $error }}</div>
+        @endforeach
+    </div>
+@endif
+
 <div class="presensi-container">
 
     <div class="presensi-heading">
         <div>
             <h3>Daftar Jadwal Mengajar</h3>
-            <p>Berikut jadwal mengajar yang dapat digunakan untuk mengisi presensi.</p>
+            <p>
+                Jadwal yang dapat diisi hanya jadwal pada hari
+                <strong>{{ ucfirst($hariIni) }}</strong>.
+            </p>
         </div>
 
         <span class="presensi-total">
@@ -27,17 +38,24 @@
     </div>
 
     @forelse($jadwal as $item)
-        <div class="presensi-card">
+
+        @php
+            $jadwalHariIni = strtolower(trim($item->hari ?? '')) === $hariIni;
+        @endphp
+
+        <div class="presensi-card {{ !$jadwalHariIni ? 'presensi-card-locked' : '' }}">
 
             <div class="presensi-card-info">
+
                 <div class="presensi-mapel">
-                    {{ $item->namamapel }}
+                    {{ $item->namamapel ?: 'Nama mapel belum diisi' }}
                 </div>
 
                 <div class="presensi-detail">
+
                     <span>
                         <i class="fas fa-calendar"></i>
-                        {{ $item->hari }}
+                        {{ ucfirst($item->hari) }}
                     </span>
 
                     <span>
@@ -47,24 +65,53 @@
 
                     <span>
                         <i class="fas fa-users"></i>
-                        {{ $item->tingkat }} {{ $item->jurusanid }}
+                        {{ $item->tingkat ?? '-' }}
+                        {{ $item->namajurusan ?? '' }}
                     </span>
+
+                    <span>
+                        <i class="fas fa-user-graduate"></i>
+                        {{ $item->jumlah_siswa ?? 0 }} Siswa
+                    </span>
+
                 </div>
+
             </div>
 
-            <a href="{{ route('presensi.form', $item->id) }}"
-               class="presensi-button">
-                Isi Presensi
-                <i class="fas fa-arrow-right"></i>
-            </a>
+            <div class="presensi-card-action">
+
+                @if($jadwalHariIni)
+
+                    <a href="{{ route('presensi.form', $item->id) }}"
+                       class="presensi-button">
+                        Isi Presensi
+                        <i class="fas fa-arrow-right"></i>
+                    </a>
+
+                @else
+
+                    <button type="button"
+                            class="presensi-button presensi-disabled"
+                            disabled
+                            title="Presensi hanya dapat diisi pada hari jadwal">
+                        Bukan Jadwal Hari Ini
+                        <i class="fas fa-lock"></i>
+                    </button>
+
+                @endif
+
+            </div>
 
         </div>
+
     @empty
+
         <div class="presensi-empty">
             <i class="fas fa-calendar-times"></i>
             <h3>Belum Ada Jadwal</h3>
             <p>Belum ada jadwal mengajar yang tersedia untuk akun Anda.</p>
         </div>
+
     @endforelse
 
 </div>
@@ -129,6 +176,10 @@
     background: #fbfdff;
 }
 
+.presensi-card-locked {
+    background: #fafafa;
+}
+
 .presensi-mapel {
     font-size: 16px;
     font-weight: 700;
@@ -154,6 +205,10 @@
     color: #3977d5;
 }
 
+.presensi-card-action {
+    flex-shrink: 0;
+}
+
 .presensi-button {
     display: inline-flex;
     align-items: center;
@@ -167,11 +222,20 @@
     font-weight: 600;
     text-decoration: none !important;
     white-space: nowrap;
+    border: none;
     transition: .2s;
 }
 
-.presensi-button:hover {
+a.presensi-button:hover {
     background: #1d4ed8;
+}
+
+.presensi-disabled,
+.presensi-disabled:disabled {
+    background: #e5e7eb !important;
+    color: #9ca3af !important;
+    cursor: not-allowed !important;
+    opacity: 1;
 }
 
 .presensi-empty {
@@ -204,9 +268,22 @@
     margin-top: 15px;
 }
 
+.presensi-error {
+    background: #fff0f0;
+    color: #c62828;
+    border: 1px solid #ffd1d1;
+    padding: 13px 17px;
+    border-radius: 8px;
+    margin-top: 15px;
+}
+
 @media (max-width: 650px) {
     .presensi-container {
         padding: 16px;
+    }
+
+    .presensi-heading {
+        align-items: flex-start;
     }
 
     .presensi-card {
@@ -214,6 +291,7 @@
         flex-direction: column;
     }
 
+    .presensi-card-action,
     .presensi-button {
         width: 100%;
     }

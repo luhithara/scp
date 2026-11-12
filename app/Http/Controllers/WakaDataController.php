@@ -1063,4 +1063,6 @@ class WakaDataController extends Controller
             ->route('waka.orangtua')
             ->with('success', 'Data orang tua berhasil ditambahkan.');
     }
+
+    
 }
